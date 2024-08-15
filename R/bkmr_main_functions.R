@@ -58,6 +58,7 @@ makeVcomps <- function(r, lambda, Z, data.comps) {
 #' @param y a vector of outcome data of length \code{n}.
 #' @param Z an \code{n}-by-\code{M} matrix of predictor variables to be included in the \code{h} function. Each row represents an observation and each column represents an predictor.
 #' @param X an \code{n}-by-\code{K} matrix of covariate data where each row represents an observation and each column represents a covariate. Should not contain an intercept column.
+#' @param modifier a vector of binary values of length \code{n} that may modify the exposure-response associations. 
 #' @param iter number of iterations to run the sampler
 #' @param family a description of the error distribution and link function to be used in the model. Currently implemented for \code{gaussian} and \code{binomial} families.
 #' @param id optional vector (of length \code{n}) of grouping factors for fitting a model with a random intercept. If NULL then no random intercept will be included.
@@ -95,7 +96,13 @@ makeVcomps <- function(r, lambda, Z, data.comps) {
 #' ## Typically should use a large number of iterations for inference
 #' set.seed(111)
 #' fitkm <- kmbayes(y = y, Z = Z, X = X, iter = 100, verbose = FALSE, varsel = TRUE)
-kmbayes <- function(y, Z, X = NULL, iter = 1000, family = "gaussian", id = NULL, verbose = TRUE, Znew = NULL, starting.values = NULL, control.params = NULL, varsel = FALSE, groups = NULL, knots = NULL, ztest = NULL, rmethod = "varying", est.h = FALSE) {
+kmbayes <- function(y, Z, X = NULL, 
+                    modifier = NULL, #added by DD
+                    iter = 1000, family = "gaussian", id = NULL, verbose = TRUE, 
+                    Znew = NULL, starting.values = NULL, 
+                    control.params = NULL, varsel = FALSE, groups = NULL,
+                    knots = NULL, ztest = NULL, rmethod = "varying",
+                    est.h = FALSE) {
   
   missingX <- is.null(X)
   if (missingX) X <- matrix(0, length(y), 1)
@@ -104,6 +111,9 @@ kmbayes <- function(y, Z, X = NULL, iter = 1000, family = "gaussian", id = NULL,
   ##Argument check 1, required arguments without defaults
   ##check vector/matrix sizes
   stopifnot (length(y) > 0, is.numeric(y), anyNA(y) == FALSE)
+  if(!is.null(modifier)){
+    stopifnot (length(modifier) > 0, is.numeric(modifier), anyNA(modifier) == FALSE)
+  }
   if (!inherits(Z, "matrix"))  Z <- as.matrix(Z)
   stopifnot (is.numeric(Z), nrow(Z) == length(y), anyNA(Z) == FALSE)
   if (!inherits(X, "matrix"))  X <- as.matrix(X)
@@ -170,6 +180,18 @@ kmbayes <- function(y, Z, X = NULL, iter = 1000, family = "gaussian", id = NULL,
       stopifnot(is.numeric(ztest), length(ztest) <= ncol(Z), anyNA(ztest) == FALSE, max(ztest) <= ncol(Z) )
     }
   }
+  
+  #add the modifier, if given, to the exposure matrix and covariate matrix
+  if(!is.null(modifier)){#added by DD
+    colnames(Z) <- paste0("z",1:ncol(Z))#added by DD
+    Z <- cbind(Z, modifier) #added by DD
+    if(is.null(colnames(X))){#added by DD
+      colnames(X) <- paste0("X",1:ncol(X))#added by DD
+    }#added by DD
+    X <- cbind(X, modifier) #added by DD
+  }#added by DD
+  
+  
   
   ## start JB code
   if (!is.null(id)) { ## for random intercept model
@@ -467,8 +489,14 @@ kmbayes <- function(y, Z, X = NULL, iter = 1000, family = "gaussian", id = NULL,
   chain$family <- family
   chain$starting.values <- starting.values
   chain$control.params <- control.params
-  chain$X <- X
-  chain$Z <- Z
+  if(!is.null(modifier)){#added by DD
+    chain$X <- X[,1:(ncol(X)-1)]#added by DD
+    chain$Z <- Z[,1:(ncol(Z)-1)]#added by DD
+    chain$modifier <- modifier #added by DD
+  }else{#added by DD
+    chain$X <- X#added by DD
+    chain$Z <- Z#added by DD
+  }#added by DD
   chain$y <- y
   chain$ztest <- ztest
   chain$data.comps <- data.comps
