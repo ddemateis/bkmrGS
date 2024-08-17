@@ -8,8 +8,10 @@ SamplePred(
   fit,
   Znew = NULL,
   Xnew = NULL,
+  mod_new = NULL,
   Z = NULL,
   X = NULL,
+  modifier = NULL,
   y = NULL,
   sel = NULL,
   type = c("link", "response"),
@@ -23,9 +25,13 @@ SamplePred(
 
 \item{Xnew}{optional matrix of new covariate values at which to obtain predictions. If not specified, defaults to using observed X values}
 
+\item{mod_new}{optional vector of new modifier values at which to predict new \code{h}, If not specified, defaults to using observed modifier values}
+
 \item{Z}{an \code{n}-by-\code{M} matrix of predictor variables to be included in the \code{h} function. Each row represents an observation and each column represents an predictor.}
 
 \item{X}{an \code{n}-by-\code{K} matrix of covariate data where each row represents an observation and each column represents a covariate. Should not contain an intercept column.}
+
+\item{modifier}{a vector of binary values of length \code{n} that may modify the exposure-response associations.}
 
 \item{y}{a vector of outcome data of length \code{n}.}
 

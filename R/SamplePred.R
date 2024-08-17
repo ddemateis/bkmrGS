@@ -4,6 +4,7 @@
 #' 
 #' @param sel A vector selecting which iterations of the BKMR fit should be retained for inference. If not specified, will default to keeping every 10 iterations after dropping the first 50\% of samples, or if this results in fewer than 100 iterations, than 100 iterations are kept
 #' @param Znew optional matrix of new predictor values at which to predict new \code{h}, where each row represents a new observation. If not specified, defaults to using observed Z values
+#' @param mod_new optional vector of new modifier values at which to predict new \code{h}, If not specified, defaults to using observed modifier values
 #' @param Xnew optional matrix of new covariate values at which to obtain predictions. If not specified, defaults to using observed X values
 #' @param type whether to make predictions on the scale of the link or of the response; only relevant for the binomial outcome family
 #' @param ... other arguments; not currently used
@@ -33,25 +34,36 @@
 #' set.seed(111)
 #' samps3 <- SamplePred(fitkm, Znew = Znew, Xnew = cbind(0))
 #' head(samps3)
-SamplePred <- function(fit, Znew = NULL, Xnew = NULL, Z = NULL, X = NULL, y = NULL, sel = NULL, type = c("link", "response"), ...) {
+SamplePred <- function(fit, Znew = NULL, Xnew = NULL, mod_new = NULL, 
+                       Z = NULL, X = NULL, modifier = NULL, y = NULL, 
+                       sel = NULL, type = c("link", "response"), ...) {
   
   if (inherits(fit, "bkmrfit")) {
     if (is.null(y)) y <- fit$y
     if (is.null(Z)) Z <- fit$Z
     if (is.null(X)) X <- fit$X
+    if (is.null(modifier)) modifier <- fit$modifier #added by DD
   }
   if (length(type) > 1) type <- type[1]
-
-  if (!is.null(Znew)) {
+  
+  
+  if (!is.null(Znew)) { #what is Znew is NULL?
     if (is.null(dim(Znew))) Znew <- matrix(Znew, nrow = 1)
     if (inherits(Znew, "data.frame")) Znew <- data.matrix(Znew)
+    Z <- cbind(Z, modifier) #added by DD
+    Znew <- cbind(Znew, mod_new) #added by DD
     if (ncol(Z) != ncol(Znew)) {
       stop("Znew must have the same number of columns as Z")
     }
   }
 
-  if (is.null(Xnew)) Xnew <- X
+  if (is.null(Xnew)){
+    Xnew <- X
+    mod_new <- modifier #added by DD
+  }
   if (!inherits(Xnew, "matrix")) Xnew <- matrix(Xnew, nrow = 1)
+  X <- cbind(X, modifier) #added by DD
+  Xnew <- cbind(Xnew, mod_new) #added by DD
   if (ncol(X) != ncol(Xnew)) {
     stop("Xnew must have the same number of columns as X")
   }
