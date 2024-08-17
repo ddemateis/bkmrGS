@@ -39,6 +39,7 @@ interactionSummary.samp <- function(newz.q1, newz.q2, preds.fun, ...) {
 #' @inherit ComputePostmeanHnew details
 #' @param qs vector of quantiles at which to calculate the overall risk summary 
 #' @param q.fixed a second quantile at which to compare the estimated \code{h} function
+#' @param m.fixed the modifier value at which to compare the estimated \code{h} function
 #' @export
 #' @return a data frame containing the (posterior mean) estimate and posterior standard deviation of the overall risk measures
 #' @examples
@@ -57,22 +58,50 @@ interactionSummary.samp <- function(newz.q1, newz.q2, preds.fun, ...) {
 #' 
 #' risks.overall <- OverallRiskSummaries(fit = fitkm, qs = seq(0.25, 0.75, by = 0.05), 
 #' q.fixed = 0.5, method = "exact")
-OverallRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL, qs = seq(0.25, 0.75, by = 0.05), q.fixed = 0.5, method = "approx", sel = NULL) {
+OverallRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL, 
+                                 modifier = NULL, 
+                                 qs = seq(0.25, 0.75, by = 0.05), 
+                                 q.fixed = 0.5, m.fixed = 0,
+                                 method = "approx", sel = NULL) {
   
   if (inherits(fit, "bkmrfit")) {
-    if (is.null(y)) y <- fit$y
-    if (is.null(Z)) Z <- fit$Z
-    if (is.null(X)) X <- fit$X
+    if (is.null(y)) 
+      y <- fit$y
+    if (is.null(Z)) 
+      Z <- fit$Z
+    if (is.null(X)) 
+      X <- fit$X
+    if (is.null(modifier)) #added by DD
+      modifier <- fit$modifier #added by DD
   }
-  
-  point1 <- apply(Z, 2, quantile, q.fixed)
+  #get the quantiles of the exposures for the first point of comparison specified by q.fixed
+  #does not apply to the modifier in the last exposure column
+  point1 <- apply(Z[,1:(ncol(Z))], 2, quantile, q.fixed)
+  point1 <- c(point1, m.fixed) #add the modifier value, 0 or 1 #added by DD
   if (method %in% c("approx", "exact")) {
-    preds.fun <- function(znew) ComputePostmeanHnew(fit = fit, y = y, Z = Z, X = X, Znew = znew, sel = sel, method = method)
+    preds.fun <- function(znew) {
+      Z <- cbind(Z, modifier) #added by DD
+      X <- cbind(X, modifier) #added by DD
+      ComputePostmeanHnew(fit = fit, 
+                          y = y, 
+                          Z = Z, 
+                          X = X, 
+                          Znew = znew, 
+                          sel = sel, 
+                          method = method)
+      }
     riskSummary <- riskSummary.approx
-  } else {
+  }else {
     stop("method must be one of c('approx', 'exact')")
   }
-  risks.overall <- t(sapply(qs, function(quant) riskSummary(point1 = point1, point2 = apply(Z, 2, quantile, quant), preds.fun = preds.fun)))
+  
+  tmp_fn <- function(quant) { #added by DD
+    riskSummary(point1 = point1, #added by DD
+                point2 = c(apply(Z[,1:(ncol(Z))], 2, quantile, quant), m.fixed), #added by DD
+                preds.fun = preds.fun) #added by DD
+  }
+  
+  risks.overall <- t(sapply(qs, tmp_fn))
   risks.overall <- data.frame(quantile = qs, risks.overall)
 }
 
