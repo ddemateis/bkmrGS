@@ -100,8 +100,12 @@ ExtractPIPs <- function(fit, sel = NULL, z.names = NULL) {
     if (is.null(sel)) {
       sel <- with(fit, seq(floor(iter/2) + 1, iter))
     }
-    if (is.null(z.names)) {
-      z.names <- colnames(fit$Z)
+    if (is.null(z.names)) { 
+      if(!is.null(fit$modifier)){#added by DD
+        z.names <- c(colnames(fit$Z),"modifier")#added by DD
+      }else{#added by DD
+        z.names <- colnames(fit$Z)#added by DD
+      }#added by DD
     }
     if (is.null(z.names)) {
       z.names <- paste0("z", 1:ncol(fit$Z))
