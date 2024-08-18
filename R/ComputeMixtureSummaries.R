@@ -106,26 +106,45 @@ OverallRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
 }
 
 #Compare estimated \code{h} function when a single variable (or a set of variables) is at the 75th versus 25th percentile, when all of the other variables are fixed at a particular percentile
-VarRiskSummary <- function(whichz = 1, fit, y = NULL, Z = NULL, X = NULL, qs.diff = c(0.25, 0.75), q.fixed = 0.5, method = "approx", sel = NULL, ...) {
+VarRiskSummary <- function (whichz = 1, fit, y = NULL, Z = NULL, X = NULL,
+                            modifier = NULL, qs.diff = c(0.25, 0.75), 
+                            q.fixed = 0.5, method = "approx", m.fixed, 
+                            sel = NULL, ...){ 
   
   if (inherits(fit, "bkmrfit")) {
-    if (is.null(y)) y <- fit$y
-    if (is.null(Z)) Z <- fit$Z
-    if (is.null(X)) X <- fit$X
+    if (is.null(y)) 
+      y <- fit$y
+    if (is.null(Z)) 
+      Z <- fit$Z
+    if (is.null(X)) 
+      X <- fit$X
   }
-  
-  point2 <- point1 <- apply(Z, 2, quantile, q.fixed)
-  point2[whichz] <- apply(Z[, whichz, drop = FALSE], 2, quantile, qs.diff[2])
-  point1[whichz] <- apply(Z[, whichz, drop = FALSE], 2, quantile, qs.diff[1])
-  # point1 <- makePoint(whichz, Z, qs.diff[1], q.fixed)
-  # point2 <- makePoint(whichz, Z, qs.diff[2], q.fixed)
+  point2 <- point1 <- c(apply(Z[,1:(ncol(Z))], 2, quantile, q.fixed), m.fixed)
+  point2[whichz] <- apply(Z[, whichz, drop = FALSE], 2, quantile, 
+                          qs.diff[2])
+  point1[whichz] <- apply(Z[, whichz, drop = FALSE], 2, quantile, 
+                          qs.diff[1])
   if (method %in% c("approx", "exact")) {
-    preds.fun <- function(znew) ComputePostmeanHnew(fit = fit, y = y, Z = Z, X = X, Znew = znew, sel = sel, method = method)
+    preds.fun <- function(znew){
+      Z <- cbind(Z, modifier)
+      X <- cbind(X, modifier)
+      ComputePostmeanHnew(fit = fit, 
+                          y = y, 
+                          Z = Z, 
+                          X = X, 
+                          Znew = znew, 
+                          sel = sel, 
+                          method = method)
+      }
     riskSummary <- riskSummary.approx
-  }  else {
+  }
+  else {
     stop("method must be one of c('approx', 'exact')")
   }
-  riskSummary(point1 = point1, point2 = point2, preds.fun = preds.fun, ...)
+  riskSummary(point1 = point1,
+              point2 = point2,
+              preds.fun = preds.fun, 
+              ...)
 }
 
 #' Single Variable Risk Summaries
@@ -160,26 +179,39 @@ VarRiskSummary <- function(whichz = 1, fit, y = NULL, Z = NULL, X = NULL, qs.dif
 #' fitkm <- kmbayes(y = y, Z = Z, X = X, iter = 100, verbose = FALSE, varsel = TRUE)
 #' 
 #' risks.singvar <- SingVarRiskSummaries(fit = fitkm, method = "exact")
-SingVarRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL, which.z = 1:ncol(Z), qs.diff = c(0.25, 0.75), q.fixed = c(0.25, 0.50, 0.75), method = "approx", sel = NULL, z.names = colnames(Z), ...) {
+SingVarRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL, 
+                                 modifier = NULL, which.z = 1:ncol(Z),
+                                 qs.diff = c(0.25, 0.75), 
+                                 q.fixed = c(0.25, 0.50, 0.75), 
+                                 m.fixed = 0, method = "approx", 
+                                 sel = NULL, z.names = colnames(Z), ...) {
   
   if (inherits(fit, "bkmrfit")) {
-    if (is.null(y)) y <- fit$y
-    if (is.null(Z)) Z <- fit$Z
-    if (is.null(X)) X <- fit$X
+    if (is.null(y)) 
+      y <- fit$y
+    if (is.null(Z)) 
+      Z <- fit$Z
+    if (is.null(X)) 
+      X <- fit$X
+    if(is.null(modifier)) #added by DD
+      modifier <- fit$modifier #added by DD
   }
-  
-  if(is.null(z.names)) z.names <- paste0("z", 1:ncol(Z))
-  
+  if (is.null(z.names)) 
+    z.names <- paste0("z", 1:ncol(Z))
   df <- dplyr::tibble()
-  for(i in seq_along(q.fixed)) {
-    for(j in seq_along(which.z)) {
-      risk <- VarRiskSummary(whichz = which.z[j], fit = fit, y = y, Z = Z, X = X, qs.diff = qs.diff, q.fixed = q.fixed[i], method = method, sel = sel, ...)
-      df0 <- dplyr::tibble(q.fixed = q.fixed[i], variable = z.names[j], est = risk["est"], sd = risk["sd"])
+  for (i in seq_along(q.fixed)) {
+    for (j in seq_along(which.z)) {
+      risk <- VarRiskSummary(whichz = which.z[j], fit = fit, 
+                             y = y, Z = Z, X = X, qs.diff = qs.diff, 
+                             q.fixed = q.fixed[i], method = method, 
+                             m.fixed = m.fixed, sel = sel,...) #added by DD
+      df0 <- dplyr::tibble(q.fixed = q.fixed[i], variable = z.names[j], 
+                           est = risk["est"], sd = risk["sd"])
       df <- dplyr::bind_rows(df, df0)
     }
   }
-  #df <- dplyr::mutate_(df, variable = ~factor(variable, levels = z.names[which.z]), q.fixed = ~as.factor(q.fixed))
-  df <- dplyr::mutate_at(df, "variable", function(x) factor(x, levels = z.names[which.z]))
+  df <- dplyr::mutate_at(df, "variable", function(x) factor(x, 
+                                                            levels = z.names[which.z]))
   df <- dplyr::mutate_at(df, "q.fixed", function(x) as.factor(x))
   attr(df, "qs.diff") <- qs.diff
   df
