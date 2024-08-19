@@ -61,7 +61,7 @@ interactionSummary.samp <- function(newz.q1, newz.q2, preds.fun, ...) {
 OverallRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL, 
                                  modifier = NULL, 
                                  qs = seq(0.25, 0.75, by = 0.05), 
-                                 q.fixed = 0.5, m.fixed = 0,
+                                 q.fixed = 0.5, m.fixed = NULL,
                                  method = "approx", sel = NULL) {
   
   if (inherits(fit, "bkmrfit")) {
@@ -108,7 +108,7 @@ OverallRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
 #Compare estimated \code{h} function when a single variable (or a set of variables) is at the 75th versus 25th percentile, when all of the other variables are fixed at a particular percentile
 VarRiskSummary <- function (whichz = 1, fit, y = NULL, Z = NULL, X = NULL,
                             modifier = NULL, qs.diff = c(0.25, 0.75), 
-                            q.fixed = 0.5, method = "approx", m.fixed, 
+                            q.fixed = 0.5, method = "approx", m.fixed = NULL, 
                             sel = NULL, ...){ 
   
   if (inherits(fit, "bkmrfit")) {
@@ -118,6 +118,8 @@ VarRiskSummary <- function (whichz = 1, fit, y = NULL, Z = NULL, X = NULL,
       Z <- fit$Z
     if (is.null(X)) 
       X <- fit$X
+    if(is.null(modifier))
+      modifier <- fit$modifier
   }
   point2 <- point1 <- c(apply(Z[,1:(ncol(Z))], 2, quantile, q.fixed), m.fixed)
   point2[whichz] <- apply(Z[, whichz, drop = FALSE], 2, quantile, 
@@ -183,7 +185,7 @@ SingVarRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
                                  modifier = NULL, which.z = 1:ncol(Z),
                                  qs.diff = c(0.25, 0.75), 
                                  q.fixed = c(0.25, 0.50, 0.75), 
-                                 m.fixed = 0, method = "approx", 
+                                 m.fixed = NULL, method = "approx", 
                                  sel = NULL, z.names = colnames(Z), ...) {
   
   if (inherits(fit, "bkmrfit")) {
@@ -204,7 +206,7 @@ SingVarRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
       risk <- VarRiskSummary(whichz = which.z[j], fit = fit, 
                              y = y, Z = Z, X = X, qs.diff = qs.diff, 
                              q.fixed = q.fixed[i], method = method, 
-                             m.fixed = m.fixed, sel = sel,...) #added by DD
+                             m.fixed = m.fixed, sel = sel) #added by DD
       df0 <- dplyr::tibble(q.fixed = q.fixed[i], variable = z.names[j], 
                            est = risk["est"], sd = risk["sd"])
       df <- dplyr::bind_rows(df, df0)
