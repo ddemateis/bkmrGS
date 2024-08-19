@@ -8,6 +8,7 @@ kmbayes(
   y,
   Z,
   X = NULL,
+  modifier = NULL,
   iter = 1000,
   family = "gaussian",
   id = NULL,
@@ -29,6 +30,8 @@ kmbayes(
 \item{Z}{an \code{n}-by-\code{M} matrix of predictor variables to be included in the \code{h} function. Each row represents an observation and each column represents an predictor.}
 
 \item{X}{an \code{n}-by-\code{K} matrix of covariate data where each row represents an observation and each column represents a covariate. Should not contain an intercept column.}
+
+\item{modifier}{a vector of binary values of length \code{n} that may modify the exposure-response associations.}
 
 \item{iter}{number of iterations to run the sampler}
 

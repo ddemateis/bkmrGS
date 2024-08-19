@@ -9,8 +9,10 @@ OverallRiskSummaries(
   y = NULL,
   Z = NULL,
   X = NULL,
+  modifier = NULL,
   qs = seq(0.25, 0.75, by = 0.05),
   q.fixed = 0.5,
+  m.fixed = NULL,
   method = "approx",
   sel = NULL
 )
@@ -24,9 +26,13 @@ OverallRiskSummaries(
 
 \item{X}{an \code{n}-by-\code{K} matrix of covariate data where each row represents an observation and each column represents a covariate. Should not contain an intercept column.}
 
+\item{modifier}{a vector of binary values of length \code{n} that may modify the exposure-response associations.}
+
 \item{qs}{vector of quantiles at which to calculate the overall risk summary}
 
 \item{q.fixed}{a second quantile at which to compare the estimated \code{h} function}
+
+\item{m.fixed}{the modifier value at which to compare the estimated \code{h} function}
 
 \item{method}{method for obtaining posterior summaries at a vector of new points. Options are "approx" and "exact"; defaults to "approx", which is faster particularly for large datasets; see details}
 

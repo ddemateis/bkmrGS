@@ -9,9 +9,11 @@ SingVarRiskSummaries(
   y = NULL,
   Z = NULL,
   X = NULL,
+  modifier = NULL,
   which.z = 1:ncol(Z),
   qs.diff = c(0.25, 0.75),
   q.fixed = c(0.25, 0.5, 0.75),
+  m.fixed = NULL,
   method = "approx",
   sel = NULL,
   z.names = colnames(Z),
@@ -27,11 +29,15 @@ SingVarRiskSummaries(
 
 \item{X}{an \code{n}-by-\code{K} matrix of covariate data where each row represents an observation and each column represents a covariate. Should not contain an intercept column.}
 
+\item{modifier}{a vector of binary values of length \code{n} that may modify the exposure-response associations.}
+
 \item{which.z}{vector indicating which variables (columns of \code{Z}) for which the summary should be computed}
 
 \item{qs.diff}{vector indicating the two quantiles \code{q_1} and \code{q_2} at which to compute \code{h(z_{q2}) - h(z_{q1})}}
 
 \item{q.fixed}{vector of quantiles at which to fix the remaining predictors in \code{Z}}
+
+\item{m.fixed}{the modifier value at which to compare the estimated \code{h} function}
 
 \item{method}{method for obtaining posterior summaries at a vector of new points. Options are "approx" and "exact"; defaults to "approx", which is faster particularly for large datasets; see details}
 
