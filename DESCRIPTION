@@ -21,6 +21,7 @@ Imports:
     truncnorm,
     tidyr,
     MASS,
+    mvtnorm,
     tmvtnorm,
     tibble
 RoxygenNote: 7.2.3
