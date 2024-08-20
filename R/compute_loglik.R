@@ -1,3 +1,4 @@
+#' @importFrom mvtnorm dmvnorm
 log_norm_density <- function(x, y, X1, Z, data.comps){
   
   #extract parameters from input vector x
@@ -20,6 +21,15 @@ log_norm_density <- function(x, y, X1, Z, data.comps){
   
   return(ll_mat)
 }
+
+#' Compute log likelihood matrix
+#'
+#' Compute log likelihood matrix for WAIC computation
+#'
+#' @export
+#' 
+#' @param fit an object of class "bkmrfit"
+#' @return a matrix with a row for each posterior sample and column for each data point
 
 compute_loglik <- function(fit){
   
