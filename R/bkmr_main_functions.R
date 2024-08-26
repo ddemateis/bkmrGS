@@ -72,6 +72,7 @@ makeVcomps <- function(r, lambda, Z, data.comps) {
 #' @param ztest optional vector indicating on which variables in Z to conduct variable selection (the remaining variables will be forced into the model).
 #' @param rmethod for those predictors being forced into the \code{h} function, the method for sampling the \code{r[m]} values. Takes the value of 'varying' to allow separate \code{r[m]} for each predictor; 'equal' to force the same \code{r[m]} for each predictor; or 'fixed' to fix the \code{r[m]} to their starting values
 #' @param est.h TRUE or FALSE: indicator for whether to sample from the posterior distribution of the subject-specific effects h_i within the main sampler. This will slow down the model fitting.
+#' @param modtest TRUE or FALSE: indicator for whether to perform selection on the modifier
 #' @return an object of class "bkmrfit" (containing the posterior samples from the model fit), which has the associated methods:
 #' \itemize{
 #'   \item \code{\link{print}} (i.e., \code{\link{print.bkmrfit}}) 
@@ -102,8 +103,8 @@ kmbayes <- function(y, Z, X = NULL,
                     Znew = NULL, starting.values = NULL, 
                     control.params = NULL, varsel = FALSE, groups = NULL,
                     knots = NULL, ztest = NULL, rmethod = "varying",
-                    est.h = FALSE) {
-  
+                    est.h = FALSE, modtest = F) {
+  #browser()
   missingX <- is.null(X)
   if (missingX) X <- matrix(0, length(y), 1)
   hier_varsel <- !is.null(groups)
@@ -247,9 +248,16 @@ kmbayes <- function(y, Z, X = NULL,
   }
   
   ## components if model selection is being done
+  #if varsel is not set to TRUE but modtest is, then set varsel to TRUE to perform selection on the modifier
+  if(!varsel & modtest){ #added by DD
+    varsel <- T #added by DD
+  } #added by DD
   if (varsel) {
-    if (is.null(ztest)) {
-      ztest <- 1:ncol(Z)
+    if (is.null(ztest) & !modtest) { #added by DD
+      ztest <- 1:(ncol(Z) - !is.null(modifier))
+    }
+    if(modtest){ #added by DD
+      ztest <- c(ztest, (ncol(Z) - !is.null(modifier))+1) #added by DD
     }
     rdelta.update <- rdelta.comp.update
   } else {
