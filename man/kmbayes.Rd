@@ -21,7 +21,8 @@ kmbayes(
   knots = NULL,
   ztest = NULL,
   rmethod = "varying",
-  est.h = FALSE
+  est.h = FALSE,
+  modtest = F
 )
 }
 \arguments{
@@ -58,6 +59,8 @@ kmbayes(
 \item{rmethod}{for those predictors being forced into the \code{h} function, the method for sampling the \code{r[m]} values. Takes the value of 'varying' to allow separate \code{r[m]} for each predictor; 'equal' to force the same \code{r[m]} for each predictor; or 'fixed' to fix the \code{r[m]} to their starting values}
 
 \item{est.h}{TRUE or FALSE: indicator for whether to sample from the posterior distribution of the subject-specific effects h_i within the main sampler. This will slow down the model fitting.}
+
+\item{modtest}{TRUE or FALSE: indicator for whether to perform selection on the modifier}
 }
 \value{
 an object of class "bkmrfit" (containing the posterior samples from the model fit), which has the associated methods:
