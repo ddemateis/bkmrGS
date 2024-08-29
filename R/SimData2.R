@@ -40,17 +40,16 @@ SimData2 <- function (opt = 1,
   n <- nrow(dta)
   
   #generate exposures
-  #Z <- matrix(rnorm(n * M), n, M)
-  #Z <- exposure[sample(1:1000, n),1:M]
   M <- 2
+  #Z <- matrix(rnorm(n * M), n, M)
   Z <- cbind(scale(dta$pb_ln), scale(dta$mn_ln))
   colnames(Z) <- paste0("z", 1:M)
   
   #generate covariates
   # X <- cbind(3 * cos(Z[,1]) + 2 * rnorm(n),
   #            3 * cos(Z[,2]) + 2 * rnorm(n))
-  X <- cbind(scale(dta$X1), 
-             scale(dta$X2), 
+  X <- cbind(scale(dta$X1),
+             scale(dta$X2),
              scale(dta$X3))
     
   #randomly generate covariate coefficients
