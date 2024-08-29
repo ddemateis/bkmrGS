@@ -9,7 +9,7 @@ log_norm_density <- function(x, y, X1, Z, data.comps){
   
   #computations
   k <- length(y)
-  K <- makeKpart(r, Z)
+  K <- exp(-makeKpart(r, Z))
   Vcomps <- makeVcomps(r, lambda, Z, data.comps) #sigma2*(I + lambda*K)
   cov_mat <- as.matrix(sigma2*Vcomps$V)
   
