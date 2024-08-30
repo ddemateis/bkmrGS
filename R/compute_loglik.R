@@ -8,15 +8,17 @@ log_norm_density <- function(x, y, X1, Z, data.comps){
   beta_mat <- as.matrix(x[grep("beta", names(x))])
   
   #computations
-  k <- length(y)
   K <- exp(-makeKpart(r, Z))
-  Vcomps <- makeVcomps(r, lambda, Z, data.comps) #sigma2*(I + lambda*K)
-  cov_mat <- as.matrix(sigma2*Vcomps$V)
+  V <- diag(1, nrow(Z), nrow(Z)) + lambda[1]*exp(-Kpart) #I + lambda*K
+  if (data.comps$nlambda == 2) {
+    V <- V + lambda[2]*data.comps$crossTT
+  }
+  cov_mat <- as.matrix(sigma2*V)
   
   #loglikelihood matrix
   ll_mat <- dmvnorm(x = y, 
-                    mean = X1%*%t(beta_mat),
-                    sigma = cov_mat,
+                    mean = X1%*%t(beta_mat), #X * beta
+                    sigma = cov_mat, #sigma2 * V
                     log = T)
   
   return(ll_mat)
