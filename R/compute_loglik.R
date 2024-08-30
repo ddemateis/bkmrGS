@@ -9,7 +9,7 @@ log_norm_density <- function(x, y, X1, Z, data.comps){
   
   #computations
   K <- exp(-makeKpart(r, Z))
-  V <- diag(1, nrow(Z), nrow(Z)) + lambda[1]*exp(-Kpart) #I + lambda*K
+  V <- diag(1, nrow(Z), nrow(Z)) + lambda[1]*exp(-K) #I + lambda*K
   if (data.comps$nlambda == 2) {
     V <- V + lambda[2]*data.comps$crossTT
   }
