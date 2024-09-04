@@ -1,5 +1,5 @@
 #' @importFrom mvtnorm dmvnorm
-log_norm_density <- function(x, y, X1, Z, data.comps){
+log_norm_density <- function(x, y, X1, Z, data.comps, modifier = NULL){
   
   #extract parameters from input vector x
   sigma2 <- as.numeric(x[grep("sigma2", names(x))])
@@ -8,8 +8,8 @@ log_norm_density <- function(x, y, X1, Z, data.comps){
   beta_mat <- as.matrix(x[grep("beta", names(x))])
   
   #computations
-  K <- exp(-makeKpart(r, Z))
-  V <- diag(1, nrow(Z), nrow(Z)) + lambda[1]*exp(-K) #I + lambda*K
+  K <- exp(-makeKpart(r, Z, modifier = modifier))
+  V <- diag(1, nrow(Z), nrow(Z)) + lambda[1]*K #I + lambda*K
   if (data.comps$nlambda == 2) {
     V <- V + lambda[2]*data.comps$crossTT
   }
@@ -42,6 +42,13 @@ compute_loglik <- function(fit){
   Z <- cbind(Z, modifier)
   X1 <- as.matrix(cbind(X1, modifier))
   data.comps <- fit$data.comps
+  kernel.method <- fit$kernel.method
+  
+  if(kernel.method == "one"){
+    kern_modifier <- NULL
+  }else if (kernel.method == "two"){
+    kern_modifier <- modifier
+  }
   
   posterior_mat <- data.frame(sigma2 = fit$sigsq.eps,
                               r = fit$r,
@@ -54,7 +61,8 @@ compute_loglik <- function(fit){
                                          y = y, 
                                          X1 = X1, 
                                          Z = Z, 
-                                         data.comps = data.comps)
+                                         data.comps = data.comps,
+                                         modifier = kern_modifier)
   }
   
   return(loglik_samps)

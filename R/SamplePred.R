@@ -46,6 +46,13 @@ SamplePred <- function(fit, Znew = NULL, Xnew = NULL, mod_new = NULL,
   }
   if (length(type) > 1) type <- type[1]
   
+  kernel.method <- fit$kernel.method
+  if(kernel.method == "one"){
+    kern_modifier <- NULL
+  }else if (kernel.method == "two"){
+    kern_modifier <- modifier
+  }
+  
   
   if (!is.null(Znew)) { #what is Znew is NULL?
     if (is.null(dim(Znew))) Znew <- matrix(Znew, nrow = 1)
@@ -100,9 +107,9 @@ SamplePred <- function(fit, Znew = NULL, Xnew = NULL, mod_new = NULL,
       ycont <- fit$ystar[s, ]
     }
     if (!is.null(Znew)) {
-      hsamp <- newh.update(Z = Z, Znew = Znew, Vcomps = NULL, lambda = lambda[s, ], sigsq.eps = sigsq.eps[s], r = r[s, ], y = ycont, X = X, beta = beta.samp, data.comps = data.comps)  
+      hsamp <- newh.update(Z = Z, Znew = Znew, Vcomps = NULL, lambda = lambda[s, ], sigsq.eps = sigsq.eps[s], r = r[s, ], y = ycont, X = X, beta = beta.samp, data.comps = data.comps, modifier = kern_modifier)  
     } else {
-      hsamp <- h.update(lambda = lambda[s, ], Vcomps = NULL, sigsq.eps = sigsq.eps[s], y = ycont, X = X, beta = beta.samp, r = r[s, ], Z = Z, data.comps = data.comps)$hsamp
+      hsamp <- h.update(lambda = lambda[s, ], Vcomps = NULL, sigsq.eps = sigsq.eps[s], y = ycont, X = X, beta = beta.samp, r = r[s, ], Z = Z, data.comps = data.comps, modifier = kern_modifier)$hsamp
     }
     
     Xbeta <- drop(Xnew %*% beta.samp)

@@ -33,11 +33,19 @@
 #' h_true <- dat$HFun(Znew)
 #' h_est1 <- ComputePostmeanHnew(fitkm, Znew = Znew, method = "approx")
 #' h_est2 <- ComputePostmeanHnew(fitkm, Znew = Znew, method = "exact")
-ComputePostmeanHnew <- function(fit, y = NULL, Z = NULL, X = NULL, Znew = NULL, sel = NULL, method = "approx") {
+ComputePostmeanHnew <- function(fit, y = NULL, Z = NULL, X = NULL, Znew = NULL, sel = NULL, method = "approx", modifier = NULL) {
+  
+  kernel.method <- fit$kernel.method
+  if(kernel.method == "one"){
+    kern_modifier <- NULL
+  }else if (kernel.method == "two"){
+    kern_modifier <- modifier
+  }
+  
   if (method == "approx") {
-    res <- ComputePostmeanHnew.approx(fit = fit, y = y, Z = Z, X = X, Znew = Znew, sel = sel)
+    res <- ComputePostmeanHnew.approx(fit = fit, y = y, Z = Z, X = X, Znew = Znew, sel = sel, modifier = kern_modifier)
   } else if (method == "exact") {
-    res <- ComputePostmeanHnew.exact(fit = fit, y = y, Z = Z, X = X, Znew = Znew, sel = sel)
+    res <- ComputePostmeanHnew.exact(fit = fit, y = y, Z = Z, X = X, Znew = Znew, sel = sel, modifier = kern_modifier)
   }
   res
 }
@@ -49,12 +57,19 @@ ComputePostmeanHnew <- function(fit, y = NULL, Z = NULL, X = NULL, Znew = NULL, 
 #' @inheritParams kmbayes
 #' @inheritParams ExtractEsts
 #' @noRd
-ComputePostmeanHnew.approx <- function(fit, y = NULL, Z = NULL, X = NULL, Znew = NULL, sel = NULL) {
+ComputePostmeanHnew.approx <- function(fit, y = NULL, Z = NULL, X = NULL, Znew = NULL, sel = NULL, modifier = NULL) {
   
   if (inherits(fit, "bkmrfit")) {
     if (is.null(y)) y <- fit$y
     if (is.null(Z)) Z <- fit$Z
     if (is.null(X)) X <- fit$X
+  }
+  
+  kernel.method <- fit$kernel.method
+  if(kernel.method == "one"){
+    kern_modifier <- NULL
+  }else if (kernel.method == "two"){
+    kern_modifier <- modifier
   }
   
   if (!is.null(Znew)) {
@@ -74,7 +89,7 @@ ComputePostmeanHnew.approx <- function(fit, y = NULL, Z = NULL, X = NULL, Znew =
     ycont <- ests$ystar[, "mean"]
   }
   
-  Kpart <- makeKpart(r, Z)
+  Kpart <- makeKpart(r, Z, modifier = modifier)
   K <- exp(-Kpart)
   V <- diag(1, nrow(Z), nrow(Z)) + lambda[1]*K
   cholV <- chol(V)
@@ -85,7 +100,7 @@ ComputePostmeanHnew.approx <- function(fit, y = NULL, Z = NULL, X = NULL, Znew =
     n0 <- nrow(Z)
     n1 <- nrow(Znew)
     nall <- n0 + n1
-    Kpartall <- makeKpart(r, rbind(Z, Znew))
+    Kpartall <- makeKpart(r, rbind(Z, Znew), modifier = modifier)
     Kmat <- exp(-Kpartall)
     Kmat0 <- Kmat[1:n0,1:n0 ,drop=FALSE]
     Kmat1 <- Kmat[(n0+1):nall,(n0+1):nall ,drop=FALSE]
@@ -115,12 +130,19 @@ ComputePostmeanHnew.approx <- function(fit, y = NULL, Z = NULL, X = NULL, Znew =
 #' @inheritParams ExtractEsts
 #' 
 #' @noRd
-ComputePostmeanHnew.exact <- function(fit, y = NULL, Z = NULL, X = NULL, Znew = NULL, sel = NULL) {
+ComputePostmeanHnew.exact <- function(fit, y = NULL, Z = NULL, X = NULL, Znew = NULL, sel = NULL, modifier = NULL) {
   
   if (inherits(fit, "bkmrfit")) {
     if (is.null(y)) y <- fit$y
     if (is.null(Z)) Z <- fit$Z
     if (is.null(X)) X <- fit$X
+  }
+  
+  kernel.method <- fit$kernel.method
+  if(kernel.method == "one"){
+    kern_modifier <- NULL
+  }else if (kernel.method == "two"){
+    kern_modifier <- modifier
   }
   
   if (!is.null(Znew)) {
@@ -164,7 +186,7 @@ ComputePostmeanHnew.exact <- function(fit, y = NULL, Z = NULL, X = NULL, Znew = 
       ycont <- fit$ystar[s, ]
     }
     
-    Kpart <- makeKpart(r, Z)
+    Kpart <- makeKpart(r, Z, modifier = modifier)
     K <- exp(-Kpart)
     Vcomps <- makeVcomps(r = r, lambda = lambda, Z = Z, data.comps = data.comps)
     Vinv <- Vcomps$Vinv
@@ -181,7 +203,7 @@ ComputePostmeanHnew.exact <- function(fit, y = NULL, Z = NULL, X = NULL, Znew = 
       n0 <- nrow(Z)
       n1 <- nrow(Znew)
       nall <- n0 + n1
-      Kpartall <- makeKpart(r, rbind(Z, Znew))
+      Kpartall <- makeKpart(r, rbind(Z, Znew), modifier = modifier)
       Kmat <- exp(-Kpartall)
       Kmat0 <- Kmat[1:n0,1:n0 ,drop=FALSE]
       Kmat1 <- Kmat[(n0+1):nall,(n0+1):nall ,drop=FALSE]

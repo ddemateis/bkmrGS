@@ -74,6 +74,14 @@ OverallRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
     if (is.null(modifier)) #added by DD
       modifier <- fit$modifier #added by DD
   }
+  
+  kernel.method <- fit$kernel.method
+  if(kernel.method == "one"){
+    kern_modifier <- NULL
+  }else if (kernel.method == "two"){
+    kern_modifier <- modifier
+  }
+  
   #get the quantiles of the exposures for the first point of comparison specified by q.fixed
   #does not apply to the modifier in the last exposure column
   point1 <- apply(Z[,1:(ncol(Z))], 2, quantile, q.fixed)
@@ -88,7 +96,8 @@ OverallRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
                           X = X, 
                           Znew = znew, 
                           sel = sel, 
-                          method = method)
+                          method = method,
+                          modifier = kern_modifier)
       }
     riskSummary <- riskSummary.approx
   }else {
@@ -121,6 +130,14 @@ VarRiskSummary <- function (whichz = 1, fit, y = NULL, Z = NULL, X = NULL,
     if(is.null(modifier))
       modifier <- fit$modifier
   }
+  
+  kernel.method <- fit$kernel.method
+  if(kernel.method == "one"){
+    kern_modifier <- NULL
+  }else if (kernel.method == "two"){
+    kern_modifier <- modifier
+  }
+  
   point2 <- point1 <- c(apply(Z[,1:(ncol(Z))], 2, quantile, q.fixed), m.fixed)
   point2[whichz] <- apply(Z[, whichz, drop = FALSE], 2, quantile, 
                           qs.diff[2])
@@ -136,7 +153,8 @@ VarRiskSummary <- function (whichz = 1, fit, y = NULL, Z = NULL, X = NULL,
                           X = X, 
                           Znew = znew, 
                           sel = sel, 
-                          method = method)
+                          method = method,
+                          modifier = kern_modifier)
       }
     riskSummary <- riskSummary.approx
   }
@@ -198,6 +216,14 @@ SingVarRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
     if(is.null(modifier)) #added by DD
       modifier <- fit$modifier #added by DD
   }
+  
+  kernel.method <- fit$kernel.method
+  if(kernel.method == "one"){
+    kern_modifier <- NULL
+  }else if (kernel.method == "two"){
+    kern_modifier <- modifier
+  }
+  
   if (is.null(z.names)) 
     z.names <- paste0("z", 1:ncol(Z))
   df <- dplyr::tibble()
@@ -227,6 +253,13 @@ SingVarIntSummary <- function(whichz = 1, fit, y = NULL, Z = NULL, X = NULL, qs.
     if (is.null(X)) X <- fit$X
   }
   
+  kernel.method <- fit$kernel.method
+  if(kernel.method == "one"){
+    kern_modifier <- NULL
+  }else if (kernel.method == "two"){
+    kern_modifier <- modifier
+  }
+  
   q.fixed <- qs.fixed[1]
   point2 <- point1 <- apply(Z, 2, quantile, q.fixed)
   point2[whichz] <- quantile(Z[, whichz], qs.diff[2])
@@ -240,7 +273,7 @@ SingVarIntSummary <- function(whichz = 1, fit, y = NULL, Z = NULL, X = NULL, qs.
   newz.q2 <- rbind(point1, point2)
   
   if (method %in% c("approx", "exact")) {
-    preds.fun <- function(znew) ComputePostmeanHnew(fit = fit, y = y, Z = Z, X = X, Znew = znew, sel = sel, method = method)
+    preds.fun <- function(znew) ComputePostmeanHnew(fit = fit, y = y, Z = Z, X = X, Znew = znew, sel = sel, method = method, modifier = kern_modifier)
     interactionSummary <- interactionSummary.approx
   } else {
     stop("method must be one of c('approx', 'exact')")
@@ -276,12 +309,19 @@ SingVarIntSummary <- function(whichz = 1, fit, y = NULL, Z = NULL, X = NULL, qs.
 #' fitkm <- kmbayes(y = y, Z = Z, X = X, iter = 100, verbose = FALSE, varsel = TRUE)
 #' 
 #' risks.int <- SingVarIntSummaries(fit = fitkm, method = "exact")
-SingVarIntSummaries <- function(fit, y = NULL, Z = NULL, X = NULL, which.z = 1:ncol(Z), qs.diff = c(0.25, 0.75), qs.fixed = c(0.25, 0.75), method = "approx", sel = NULL, z.names = colnames(Z), ...) {
+SingVarIntSummaries <- function(fit, y = NULL, Z = NULL, X = NULL, which.z = 1:ncol(Z), qs.diff = c(0.25, 0.75), qs.fixed = c(0.25, 0.75), method = "approx", sel = NULL, z.names = colnames(Z), modifier = NULL, ...) {
   
   if (inherits(fit, "bkmrfit")) {
     if (is.null(y)) y <- fit$y
     if (is.null(Z)) Z <- fit$Z
     if (is.null(X)) X <- fit$X
+  }
+  
+  kernel.method <- fit$kernel.method
+  if(kernel.method == "one"){
+    kern_modifier <- NULL
+  }else if (kernel.method == "two"){
+    kern_modifier <- modifier
   }
   
   if(is.null(z.names)) z.names <- paste0("z", 1:ncol(Z))

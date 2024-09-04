@@ -30,7 +30,7 @@ ystar.update.noh <- function(y, X, beta, Vinv, ystar) {
   drop(samp)
 }
 
-r.update <- function(r, whichcomp, delta, lambda, y, X, beta, sigsq.eps, Vcomps, Z, data.comps, control.params, rprop.gen, rprop.logdens, rprior.logdens, ...) {
+r.update <- function(r, whichcomp, delta, lambda, y, X, beta, sigsq.eps, Vcomps, Z, data.comps, control.params, rprop.gen, rprop.logdens, rprior.logdens, modifier = NULL, ...) {
 	# r.params <- set.r.params(r.prior = control.params$r.prior, comp = whichcomp, r.params = control.params$r.params)
 	r.params <- make_r_params_comp(control.params$r.params, whichcomp)
 	rcomp <- unique(r[whichcomp])
@@ -52,10 +52,10 @@ r.update <- function(r, whichcomp, delta, lambda, y, X, beta, sigsq.eps, Vcomps,
 	r.star[whichcomp] <- rcomp.star
 
 	## M-H step
-	return(MHstep(r=r, lambda=lambda, lambda.star=lambda.star, r.star=r.star, delta=delta, delta.star=delta.star, y=y, X=X, Z=Z, beta=beta, sigsq.eps=sigsq.eps, diffpriors=diffpriors, negdifflogproposal=negdifflogproposal, Vcomps=Vcomps, move.type=move.type, data.comps=data.comps))
+	return(MHstep(r=r, lambda=lambda, lambda.star=lambda.star, r.star=r.star, delta=delta, delta.star=delta.star, y=y, X=X, Z=Z, beta=beta, sigsq.eps=sigsq.eps, diffpriors=diffpriors, negdifflogproposal=negdifflogproposal, Vcomps=Vcomps, move.type=move.type, data.comps=data.comps, modifier = modifier))
 }
 
-rdelta.comp.update <- function(r, delta, lambda, y, X, beta, sigsq.eps, Vcomps, Z, ztest, data.comps, control.params, rprop.gen2, rprop.logdens1, rprior.logdens, rprior.logdens2, rprop.logdens2, rprop.gen1, ...) { ## individual variable selection
+rdelta.comp.update <- function(r, delta, lambda, y, X, beta, sigsq.eps, Vcomps, Z, ztest, data.comps, control.params, rprop.gen2, rprop.logdens1, rprior.logdens, rprior.logdens2, rprop.logdens2, rprop.gen1, modifier = NULL, ...) { ## individual variable selection
 	r.params <- control.params$r.params
 	a.p0 <- control.params$a.p0
 	b.p0 <- control.params$b.p0
@@ -90,10 +90,10 @@ rdelta.comp.update <- function(r, delta, lambda, y, X, beta, sigsq.eps, Vcomps, 
 	lambda.star <- lambda
 
 	## M-H step
-	return(MHstep(r=r, lambda=lambda, lambda.star=lambda.star, r.star=r.star, delta=delta, delta.star=delta.star, y=y, X=X, Z=Z, beta=beta, sigsq.eps=sigsq.eps, diffpriors=diffpriors, negdifflogproposal=negdifflogproposal, Vcomps=Vcomps, move.type=move.type, data.comps=data.comps))
+	return(MHstep(r=r, lambda=lambda, lambda.star=lambda.star, r.star=r.star, delta=delta, delta.star=delta.star, y=y, X=X, Z=Z, beta=beta, sigsq.eps=sigsq.eps, diffpriors=diffpriors, negdifflogproposal=negdifflogproposal, Vcomps=Vcomps, move.type=move.type, data.comps=data.comps, modifier = modifier))
 }
 
-rdelta.group.update <- function(r, delta, lambda, y, X, beta, sigsq.eps, Vcomps, Z, ztest, data.comps, control.params, rprop.gen1, rprior.logdens, rprop.logdens1, rprop.gen2, rprop.logdens2, ...) { ## grouped variable selection
+rdelta.group.update <- function(r, delta, lambda, y, X, beta, sigsq.eps, Vcomps, Z, ztest, data.comps, control.params, rprop.gen1, rprior.logdens, rprop.logdens1, rprop.gen2, rprop.logdens2, modifier = NULL, ...) { ## grouped variable selection
 	r.params <- control.params$r.params
 	a.p0 <- control.params$a.p0
 	b.p0 <- control.params$b.p0
@@ -186,10 +186,10 @@ rdelta.group.update <- function(r, delta, lambda, y, X, beta, sigsq.eps, Vcomps,
 	lambda.star <- lambda
 
 	## M-H step
-	return(MHstep(r=r, lambda=lambda, lambda.star=lambda.star, r.star=r.star, delta=delta, delta.star=delta.star, y=y, X=X, Z=Z, beta=beta, sigsq.eps=sigsq.eps, diffpriors=diffpriors, negdifflogproposal=negdifflogproposal, Vcomps=Vcomps, move.type=move.type, data.comps=data.comps))
+	return(MHstep(r=r, lambda=lambda, lambda.star=lambda.star, r.star=r.star, delta=delta, delta.star=delta.star, y=y, X=X, Z=Z, beta=beta, sigsq.eps=sigsq.eps, diffpriors=diffpriors, negdifflogproposal=negdifflogproposal, Vcomps=Vcomps, move.type=move.type, data.comps=data.comps, modifier = modifier))
 }
 
-lambda.update <- function(r, delta, lambda, whichcomp=1, y, X, Z = Z, beta, sigsq.eps, Vcomps, data.comps, control.params) {
+lambda.update <- function(r, delta, lambda, whichcomp=1, y, X, Z = Z, beta, sigsq.eps, Vcomps, data.comps, control.params, modifier = NULL) {
 	lambda.jump <- control.params$lambda.jump[whichcomp]
 	mu.lambda <- control.params$mu.lambda[whichcomp]
 	sigma.lambda <- control.params$sigma.lambda[whichcomp]
@@ -211,12 +211,12 @@ lambda.update <- function(r, delta, lambda, whichcomp=1, y, X, Z = Z, beta, sigs
 	lambda.star[whichcomp] <- lambdacomp.star
 
 	## M-H step
-	return(MHstep(r=r, lambda=lambda, lambda.star=lambda.star, r.star=r.star, delta=delta, delta.star=delta.star, y=y, X=X, Z=Z, beta=beta, sigsq.eps=sigsq.eps, diffpriors=diffpriors, negdifflogproposal=negdifflogproposal, Vcomps=Vcomps, move.type=move.type, data.comps=data.comps))
+	return(MHstep(r=r, lambda=lambda, lambda.star=lambda.star, r.star=r.star, delta=delta, delta.star=delta.star, y=y, X=X, Z=Z, beta=beta, sigsq.eps=sigsq.eps, diffpriors=diffpriors, negdifflogproposal=negdifflogproposal, Vcomps=Vcomps, move.type=move.type, data.comps=data.comps, modifier = modifier))
 }
 
-MHstep <- function(r, lambda, lambda.star, r.star, delta, delta.star, y, X, Z, beta, sigsq.eps, diffpriors, negdifflogproposal, Vcomps, move.type, data.comps) {
+MHstep <- function(r, lambda, lambda.star, r.star, delta, delta.star, y, X, Z, beta, sigsq.eps, diffpriors, negdifflogproposal, Vcomps, move.type, data.comps, modifier = NULL) {
 	## compute log M-H ratio
-	Vcomps.star <- makeVcomps(r.star, lambda.star, Z, data.comps)
+	Vcomps.star <- makeVcomps(r.star, lambda.star, Z, data.comps, modifier = modifier)
 	mu <- y - X%*%beta
 	diffliks <- 1/2*Vcomps.star$logdetVinv - 1/2*Vcomps$logdetVinv - 1/2/sigsq.eps*crossprod(mu, Vcomps.star$Vinv - Vcomps$Vinv)%*%mu
 	logMHratio <- diffliks + diffpriors + negdifflogproposal
@@ -234,12 +234,12 @@ MHstep <- function(r, lambda, lambda.star, r.star, delta, delta.star, y, X, Z, b
 	return(list(r=r, lambda=lambda, delta=delta, acc=acc, Vcomps=Vcomps, move.type=move.type))
 }
 
-h.update <- function(lambda, Vcomps, sigsq.eps, y, X, beta, r, Z, data.comps) {
+h.update <- function(lambda, Vcomps, sigsq.eps, y, X, beta, r, Z, data.comps, modifier=NULL) {
   if (is.null(Vcomps)) {
     Vcomps <- makeVcomps(r = r, lambda = lambda, Z = Z, data.comps = data.comps)
   }
 	if(is.null(Vcomps$Q)) {
-		Kpart <- makeKpart(r, Z)
+		Kpart <- makeKpart(r, Z, modifier = modifier)
 		K <- exp(-Kpart)
 		Vinv <- Vcomps$Vinv
 		lambda <- lambda[1] ## in case with random intercept (randint==TRUE), where lambda is 2-dimensional
@@ -264,7 +264,7 @@ h.update <- function(lambda, Vcomps, sigsq.eps, y, X, beta, r, Z, data.comps) {
 	hcomps
 }
 
-newh.update <- function(Z, Znew, Vcomps, lambda, sigsq.eps, r, y, X, beta, data.comps) {
+newh.update <- function(Z, Znew, Vcomps, lambda, sigsq.eps, r, y, X, beta, data.comps, modifier = NULL) {
 
 	if(is.null(data.comps$knots)) {
 		n0 <- nrow(Z)
@@ -275,11 +275,11 @@ newh.update <- function(Z, Znew, Vcomps, lambda, sigsq.eps, r, y, X, beta, data.
 		# Kmat0 <- Kmat[1:n0,1:n0 ,drop=FALSE]
 		# Kmat1 <- Kmat[(n0+1):nall,(n0+1):nall ,drop=FALSE]
 		# Kmat10 <- Kmat[(n0+1):nall,1:n0 ,drop=FALSE]
-		Kmat1 <- exp(-makeKpart(r, Znew))
-		Kmat10 <- exp(-makeKpart(r, Znew, Z))
+		Kmat1 <- exp(-makeKpart(r, Znew, modifier = modifier))
+		Kmat10 <- exp(-makeKpart(r, Znew, Z, modifier = modifier))
 
 		if(is.null(Vcomps)) {
-			Vcomps <- makeVcomps(r = r, lambda = lambda, Z = Z, data.comps = data.comps)
+			Vcomps <- makeVcomps(r = r, lambda = lambda, Z = Z, data.comps = data.comps, modifier = modifier)
 		}
 		Vinv <- Vcomps$Vinv
 
@@ -301,10 +301,10 @@ newh.update <- function(Z, Znew, Vcomps, lambda, sigsq.eps, r, y, X, beta, data.
 		# Kmat0 <- Kmat[1:n0,1:n0 ,drop=FALSE]
 		# Kmat1 <- Kmat[(n0+1):nall,(n0+1):nall ,drop=FALSE]
 		# Kmat10 <- Kmat[(n0+1):nall,1:n0 ,drop=FALSE]
-		Kmat10 <- exp(-makeKpart(r, Znew, data.comps$knots))
+		Kmat10 <- exp(-makeKpart(r, Znew, data.comps$knots, modifier = modifier))
 
 		if(is.null(Vcomps)) {
-			Vcomps <- makeVcomps(r = r, lambda = lambda, Z = Z, data.comps = data.comps)
+			Vcomps <- makeVcomps(r = r, lambda = lambda, Z = Z, data.comps = data.comps, modifier = modifier)
 			h.star.postvar.sqrt <- sqrt(sigsq.eps*lambda[1])*forwardsolve(t(Vcomps$cholR), Vcomps$Q)
 			h.star.postmean <- lambda[1]*Vcomps$Q %*% Vcomps$Rinv %*% Vcomps$K10 %*% (y - X %*% beta)
 			Vcomps$hsamp.star <- h.star.postmean + crossprod(h.star.postvar.sqrt, rnorm(length(h.star.postmean)))
@@ -316,24 +316,31 @@ newh.update <- function(Z, Znew, Vcomps, lambda, sigsq.eps, r, y, X, beta, data.
 }
 
 ## function to obtain posterior samples of h(znew) from fit of Bayesian kernel machine regression
-predz.samps <- function(fit, Znew, verbose = TRUE) {
+predz.samps <- function(fit, Znew, verbose = TRUE, modifier = NULL) {
 	if(is.null(dim(Znew))) Znew <- matrix(Znew, nrow=1)
 	if(inherits(Znew, "data.frame")) Znew <- data.matrix(Znew)
 	Z <- fit$Z
 	if(ncol(Z) != ncol(Znew)) {
 		stop("Znew must have the same number of columns as Z")
 	}
+	
+	kernel.method <- fit$kernel.method
+	if(kernel.method == "one"){
+	  kern_modifier <- NULL
+	}else if(kernel.method == "two"){
+	  kern_modifier <- fit$modifier
+	}
 
 	hnew.samps <- sapply(1:fit$nsamp, function(s) {
 		if(s%%(fit$nsamp/10)==0 & verbose) print(s)
-		newh.update(Z = Z, Znew = Znew, Vcomps = NULL, lambda = fit$lambda[s], sigsq.eps = fit$sigsq.eps[s], r = fit$r[s,], y = fit$y, X = fit$X, beta = fit$beta[s,], data.comps = fit$data.comps)
+		newh.update(Z = Z, Znew = Znew, Vcomps = NULL, lambda = fit$lambda[s], sigsq.eps = fit$sigsq.eps[s], r = fit$r[s,], y = fit$y, X = fit$X, beta = fit$beta[s,], data.comps = fit$data.comps, modifier = kern_modifier)
 	})
 	rownames(hnew.samps) <- rownames(Znew)
 	t(hnew.samps)
 }
 
 ## function to approximate the posterior mean and variance as a function of the estimated tau, lambda, beta, and sigsq.eps
-newh.postmean <- function(fit, Znew, sel) {
+newh.postmean <- function(fit, Znew, sel, modifier = NULL) {
 	if(is.null(dim(Znew))) Znew <- matrix(Znew, nrow=1)
 	if(inherits(Znew, "data.frame")) Znew <- data.matrix(Znew)
 
@@ -345,18 +352,25 @@ newh.postmean <- function(fit, Znew, sel) {
 	sigsq.eps <- mean(fit$sigsq.eps[sel])
 	r <- colMeans(fit$r[sel,])
 	beta <- colMeans(fit$beta[sel, ,drop=FALSE])
+	
+	kernel.method <- fit$kernel.method
+	if(kernel.method == "one"){
+	  kern_modifier <- NULL
+	}else if (kernel.method == "two"){
+	  kern_modifier <- modifier
+	}
 
 	if(is.null(data.comps$knots)) {
 		n0 <- nrow(Z)
 		n1 <- nrow(Znew)
 		nall <- n0 + n1
-		Kpartall <- makeKpart(r, rbind(Z, Znew))
+		Kpartall <- makeKpart(r, rbind(Z, Znew), modifier = kern_modifier)
 		Kmat <- exp(-Kpartall)
 		Kmat0 <- Kmat[1:n0,1:n0 ,drop=FALSE]
 		Kmat1 <- Kmat[(n0+1):nall,(n0+1):nall ,drop=FALSE]
 		Kmat10 <- Kmat[(n0+1):nall,1:n0 ,drop=FALSE]
 
-		Vcomps <- makeVcomps(r = r, lambda = lambda, Z = Z, data.comps = data.comps)
+		Vcomps <- makeVcomps(r = r, lambda = lambda, Z = Z, data.comps = data.comps, modifier = kern_modifier)
 		Vinv <- Vcomps$Vinv
 
 		lamK10Vinv <- lambda[1]*Kmat10 %*% Vinv
@@ -366,15 +380,15 @@ newh.postmean <- function(fit, Znew, sel) {
 		n0 <- nrow(data.comps$knots)
 		n1 <- nrow(Znew)
 		nall <- n0 + n1
-		Kpartall <- makeKpart(r, rbind(data.comps$knots, Znew))
+		Kpartall <- makeKpart(r, rbind(data.comps$knots, Znew), modifier = kern_modifier)
 		# Kmat <- exp(-Kpartall)
 		# Kmat0 <- Kmat[1:n0,1:n0 ,drop=FALSE]
 		# Kmat1 <- Kmat[(n0+1):nall,(n0+1):nall ,drop=FALSE]
 		# Kmat10 <- Kmat[(n0+1):nall,1:n0 ,drop=FALSE]
-		Kmat1 <- exp(-makeKpart(r, Znew))
-		Kmat10 <- exp(-makeKpart(r, Znew, data.comps$knots))
+		Kmat1 <- exp(-makeKpart(r, Znew, modifier = kern_modifier))
+		Kmat10 <- exp(-makeKpart(r, Znew, data.comps$knots, modifier = kern_modifier))
 
-		Vcomps <- makeVcomps(r = r, lambda = lambda, Z = Z, data.comps = data.comps)
+		Vcomps <- makeVcomps(r = r, lambda = lambda, Z = Z, data.comps = data.comps, modifier = kern_modifier)
 
 		Sigma.hnew <- lambda[1]*sigsq.eps*Kmat10 %*% Vcomps$Rinv %*% t(Kmat10)
 		mu.hnew <- lambda[1]*Kmat10 %*% Vcomps$Rinv %*% Vcomps$K10 %*% (y - X%*%beta)

@@ -2,7 +2,7 @@
 # Kpart <- as.matrix(dist(sqrt(matrix(r, byrow=TRUE, nrow(Z), ncol(Z)))*Z))^2
 # Kpart
 # }
-makeKpart <- function(r, Z1, Z2 = NULL) {
+makeKpart <- function(r, Z1, Z2 = NULL, modifier = NULL) {
   Z1r <- sweep(Z1, 2, sqrt(r), "*")
   if (is.null(Z2)) {
     Z2r <- Z1r
@@ -10,11 +10,15 @@ makeKpart <- function(r, Z1, Z2 = NULL) {
     Z2r <- sweep(Z2, 2, sqrt(r), "*")
   }
   Kpart <- fields::rdist(Z1r, Z2r)^2
+  if(!is.null(modifier)){
+    zero_idx <- outer((modifier+1), (modifier+1), "*")
+    Kpart[zero_idx == 2] <- 0
+  }
   Kpart
 }
-makeVcomps <- function(r, lambda, Z, data.comps) {
+makeVcomps <- function(r, lambda, Z, data.comps, modifier = NULL) {
   if (is.null(data.comps$knots)) {
-    Kpart <- makeKpart(r, Z)
+    Kpart <- makeKpart(r, Z, modifier = modifier)
     V <- diag(1, nrow(Z), nrow(Z)) + lambda[1]*exp(-Kpart)
     if (data.comps$nlambda == 2) {
       V <- V + lambda[2]*data.comps$crossTT
@@ -34,8 +38,8 @@ makeVcomps <- function(r, lambda, Z, data.comps) {
     # K0 <- Kall[1:n0, 1:n0 ,drop=FALSE]
     # K1 <- Kall[(n0+1):nall, (n0+1):nall ,drop=FALSE]
     # K10 <- Kall[(n0+1):nall, 1:n0 ,drop=FALSE]
-    K1 <- exp(-makeKpart(r, data.comps$knots))
-    K10 <- exp(-makeKpart(r, data.comps$knots, Z))
+    K1 <- exp(-makeKpart(r, data.comps$knots, modifier = modifier))
+    K10 <- exp(-makeKpart(r, data.comps$knots, Z, modifier = modifier))
     Q <- K1 + diag(nugget, n1, n1)
     R <- Q + lambda[1]*tcrossprod(K10)
     cholQ <- chol(Q)
@@ -73,6 +77,7 @@ makeVcomps <- function(r, lambda, Z, data.comps) {
 #' @param rmethod for those predictors being forced into the \code{h} function, the method for sampling the \code{r[m]} values. Takes the value of 'varying' to allow separate \code{r[m]} for each predictor; 'equal' to force the same \code{r[m]} for each predictor; or 'fixed' to fix the \code{r[m]} to their starting values
 #' @param est.h TRUE or FALSE: indicator for whether to sample from the posterior distribution of the subject-specific effects h_i within the main sampler. This will slow down the model fitting.
 #' @param modtest TRUE or FALSE: indicator for whether to perform selection on the modifier
+#' @param kernel.method When \code{modifier = "TRUE"}, use \code{kernel.method = "one"} for a one-kernel approach or \code{kernel.method = "two"} for a two-kernel approach 
 #' @return an object of class "bkmrfit" (containing the posterior samples from the model fit), which has the associated methods:
 #' \itemize{
 #'   \item \code{\link{print}} (i.e., \code{\link{print.bkmrfit}}) 
@@ -103,11 +108,25 @@ kmbayes <- function(y, Z, X = NULL,
                     Znew = NULL, starting.values = NULL, 
                     control.params = NULL, varsel = FALSE, groups = NULL,
                     knots = NULL, ztest = NULL, rmethod = "varying",
-                    est.h = FALSE, modtest = F) {
+                    est.h = FALSE, modtest = F, kernel.method = "one") {
   #browser()
   missingX <- is.null(X)
   if (missingX) X <- matrix(0, length(y), 1)
   hier_varsel <- !is.null(groups)
+  
+  #make sure kernel.method is provided properly
+  if(kernel.method == "one"){
+    kern_modifier <- NULL
+  }else if (kernel.method == "two"){
+    if(is.null(modifier)){
+      warning("Two-kernel aproach is only for BKMR with effect modification. Setting kernel.method to 'one'.")
+      kernel.method <- "one"
+    }else{
+      kern_modifier <- modifier
+    }
+  }else{
+    stop("Invalid kernel.method. Only 'one' and 'two' are supported.")
+  }
   
   ##Argument check 1, required arguments without defaults
   ##check vector/matrix sizes
@@ -385,7 +404,7 @@ kmbayes <- function(y, Z, X = NULL,
   chain$est.h <- est.h
   
   ## components
-  Vcomps <- makeVcomps(r = chain$r[1, ], lambda = chain$lambda[1, ], Z = Z, data.comps = data.comps)
+  Vcomps <- makeVcomps(r = chain$r[1, ], lambda = chain$lambda[1, ], Z = Z, data.comps = data.comps, modifier = kern_modifier)
 
   ## start sampling ####
   chain$time1 <- Sys.time()
@@ -418,7 +437,7 @@ kmbayes <- function(y, Z, X = NULL,
     ## lambda
     lambdaSim <- chain$lambda[s - 1,]
     for (comp in 1:data.comps$nlambda) {
-      varcomps <- lambda.update(r = chain$r[s - 1,], delta = chain$delta[s - 1,], lambda = lambdaSim, whichcomp = comp, y = ycont, X = X, Z = Z, beta = chain$beta[s,], sigsq.eps = chain$sigsq.eps[s], Vcomps = Vcomps, data.comps = data.comps, control.params = control.params)
+      varcomps <- lambda.update(r = chain$r[s - 1,], delta = chain$delta[s - 1,], lambda = lambdaSim, whichcomp = comp, y = ycont, X = X, Z = Z, beta = chain$beta[s,], sigsq.eps = chain$sigsq.eps[s], Vcomps = Vcomps, data.comps = data.comps, control.params = control.params, modifier = kern_modifier)
       lambdaSim <- varcomps$lambda
       if (varcomps$acc) {
         Vcomps <- varcomps$Vcomps
@@ -432,7 +451,7 @@ kmbayes <- function(y, Z, X = NULL,
     comp <- which(!1:ncol(Z) %in% ztest)
     if (length(comp) != 0) {
       if (rmethod == "equal") { ## common r for those variables not being selected
-        varcomps <- r.update(r = rSim, whichcomp = comp, delta = chain$delta[s - 1,], lambda = chain$lambda[s,], y = ycont, X = X, beta = chain$beta[s,], sigsq.eps = chain$sigsq.eps[s], Vcomps = Vcomps, Z = Z, data.comps = data.comps, control.params = control.params, rprior.logdens = rprior.logdens, rprop.gen1 = rprop.gen1, rprop.logdens1 = rprop.logdens1, rprop.gen2 = rprop.gen2, rprop.logdens2 = rprop.logdens2, rprop.gen = rprop.gen, rprop.logdens = rprop.logdens)
+        varcomps <- r.update(r = rSim, whichcomp = comp, delta = chain$delta[s - 1,], lambda = chain$lambda[s,], y = ycont, X = X, beta = chain$beta[s,], sigsq.eps = chain$sigsq.eps[s], Vcomps = Vcomps, Z = Z, data.comps = data.comps, control.params = control.params, rprior.logdens = rprior.logdens, rprop.gen1 = rprop.gen1, rprop.logdens1 = rprop.logdens1, rprop.gen2 = rprop.gen2, rprop.logdens2 = rprop.logdens2, rprop.gen = rprop.gen, rprop.logdens = rprop.logdens, modifier = kern_modifier)
         rSim <- varcomps$r
         if (varcomps$acc) {
           Vcomps <- varcomps$Vcomps
@@ -466,7 +485,7 @@ kmbayes <- function(y, Z, X = NULL,
     ## generate posterior sample of h(z) from its posterior P(h | beta, sigsq.eps, lambda, r, y)
     
     if (est.h) {
-      hcomps <- h.update(lambda = chain$lambda[s,], Vcomps = Vcomps, sigsq.eps = chain$sigsq.eps[s], y = ycont, X = X, beta = chain$beta[s,], r = chain$r[s,], Z = Z, data.comps = data.comps)
+      hcomps <- h.update(lambda = chain$lambda[s,], Vcomps = Vcomps, sigsq.eps = chain$sigsq.eps[s], y = ycont, X = X, beta = chain$beta[s,], r = chain$r[s,], Z = Z, data.comps = data.comps, modifier = kern_modifier)
       chain$h.hat[s,] <- hcomps$hsamp
       if (!is.null(hcomps$hsamp.star)) { ## GPP
         Vcomps$hsamp.star <- hcomps$hsamp.star
@@ -478,7 +497,7 @@ kmbayes <- function(y, Z, X = NULL,
     ## generate posterior samples of h(Znew) from its posterior P(hnew | beta, sigsq.eps, lambda, r, y)
     
     if (!is.null(Znew)) {
-      chain$hnew[s,] <- newh.update(Z = Z, Znew = Znew, Vcomps = Vcomps, lambda = chain$lambda[s,], sigsq.eps = chain$sigsq.eps[s], r = chain$r[s,], y = ycont, X = X, beta = chain$beta[s,], data.comps = data.comps)
+      chain$hnew[s,] <- newh.update(Z = Z, Znew = Znew, Vcomps = Vcomps, lambda = chain$lambda[s,], sigsq.eps = chain$sigsq.eps[s], r = chain$r[s,], y = ycont, X = X, beta = chain$beta[s,], data.comps = data.comps, modifier = kern_modifier)
     }
     
     ###################################################
@@ -511,6 +530,7 @@ kmbayes <- function(y, Z, X = NULL,
   if (!is.null(Znew)) chain$Znew <- Znew
   if (!is.null(groups)) chain$groups <- groups
   chain$varsel <- varsel
+  chain$kernel.method <- kernel.method
   class(chain) <- c("bkmrfit", class(chain))
   chain
 }
