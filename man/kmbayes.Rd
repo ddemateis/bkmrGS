@@ -22,7 +22,8 @@ kmbayes(
   ztest = NULL,
   rmethod = "varying",
   est.h = FALSE,
-  modtest = F
+  modtest = F,
+  kernel.method = "one"
 )
 }
 \arguments{
@@ -61,6 +62,8 @@ kmbayes(
 \item{est.h}{TRUE or FALSE: indicator for whether to sample from the posterior distribution of the subject-specific effects h_i within the main sampler. This will slow down the model fitting.}
 
 \item{modtest}{TRUE or FALSE: indicator for whether to perform selection on the modifier}
+
+\item{kernel.method}{When \code{modifier = "TRUE"}, use \code{kernel.method = "one"} for a one-kernel approach or \code{kernel.method = "two"} for a two-kernel approach}
 }
 \value{
 an object of class "bkmrfit" (containing the posterior samples from the model fit), which has the associated methods:

@@ -9,6 +9,7 @@ PredictorResponseBivarPair(
   y = NULL,
   Z = NULL,
   X = NULL,
+  modifier = NULL,
   whichz1 = 1,
   whichz2 = 2,
   whichz3 = NULL,
@@ -30,6 +31,8 @@ PredictorResponseBivarPair(
 \item{Z}{an \code{n}-by-\code{M} matrix of predictor variables to be included in the \code{h} function. Each row represents an observation and each column represents an predictor.}
 
 \item{X}{an \code{n}-by-\code{K} matrix of covariate data where each row represents an observation and each column represents a covariate. Should not contain an intercept column.}
+
+\item{modifier}{a vector of binary values of length \code{n} that may modify the exposure-response associations.}
 
 \item{whichz1}{vector identifying the first predictor that (column of \code{Z}) should be plotted}
 

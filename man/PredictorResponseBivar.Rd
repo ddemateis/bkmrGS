@@ -9,6 +9,7 @@ PredictorResponseBivar(
   y = NULL,
   Z = NULL,
   X = NULL,
+  modifier = NULL,
   z.pairs = NULL,
   method = "approx",
   ngrid = 50,
@@ -29,6 +30,8 @@ PredictorResponseBivar(
 \item{Z}{an \code{n}-by-\code{M} matrix of predictor variables to be included in the \code{h} function. Each row represents an observation and each column represents an predictor.}
 
 \item{X}{an \code{n}-by-\code{K} matrix of covariate data where each row represents an observation and each column represents a covariate. Should not contain an intercept column.}
+
+\item{modifier}{a vector of binary values of length \code{n} that may modify the exposure-response associations.}
 
 \item{z.pairs}{data frame showing which pairs of predictors to plot}
 

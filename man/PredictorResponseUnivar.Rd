@@ -9,6 +9,7 @@ PredictorResponseUnivar(
   y = NULL,
   Z = NULL,
   X = NULL,
+  modifier = NULL,
   which.z = 1:ncol(Z),
   method = "approx",
   ngrid = 50,
@@ -28,6 +29,8 @@ PredictorResponseUnivar(
 \item{Z}{an \code{n}-by-\code{M} matrix of predictor variables to be included in the \code{h} function. Each row represents an observation and each column represents an predictor.}
 
 \item{X}{an \code{n}-by-\code{K} matrix of covariate data where each row represents an observation and each column represents a covariate. Should not contain an intercept column.}
+
+\item{modifier}{a vector of binary values of length \code{n} that may modify the exposure-response associations.}
 
 \item{which.z}{vector identifying which predictors (columns of \code{Z}) should be plotted}
 

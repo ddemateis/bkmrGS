@@ -3,6 +3,7 @@
 #' @inheritParams kmbayes
 #' @param fit An object containing the results returned by a the \code{kmbayes} function 
 #' @param Znew matrix of new predictor values at which to predict new \code{h}, where each row represents a new observation. If set to NULL then will default to using the observed exposures Z.
+#' @param mod_new vector of new modifier values at which to predict new \code{h}. If set to NULL then will default to using the observed modifiers.
 #' @param method method for obtaining posterior summaries at a vector of new points. Options are "approx" and "exact"; defaults to "approx", which is faster particularly for large datasets; see details
 #' @param sel selects which iterations of the MCMC sampler to use for inference; see details
 #' @details
@@ -33,19 +34,12 @@
 #' h_true <- dat$HFun(Znew)
 #' h_est1 <- ComputePostmeanHnew(fitkm, Znew = Znew, method = "approx")
 #' h_est2 <- ComputePostmeanHnew(fitkm, Znew = Znew, method = "exact")
-ComputePostmeanHnew <- function(fit, y = NULL, Z = NULL, X = NULL, Znew = NULL, sel = NULL, method = "approx", modifier = NULL) {
-  
-  kernel.method <- fit$kernel.method
-  if(kernel.method == "one"){
-    kern_modifier <- NULL
-  }else if (kernel.method == "two"){
-    kern_modifier <- modifier
-  }
-  
+ComputePostmeanHnew <- function(fit, y = NULL, Z = NULL, X = NULL, modifier = NULL, Znew = NULL, mod_new = NULL, sel = NULL, method = "approx") {
+
   if (method == "approx") {
-    res <- ComputePostmeanHnew.approx(fit = fit, y = y, Z = Z, X = X, Znew = Znew, sel = sel, modifier = kern_modifier)
+    res <- ComputePostmeanHnew.approx(fit = fit, y = y, Z = Z, X = X, modifier = modifier, Znew = Znew, mod_new = mod_new, sel = sel)
   } else if (method == "exact") {
-    res <- ComputePostmeanHnew.exact(fit = fit, y = y, Z = Z, X = X, Znew = Znew, sel = sel, modifier = kern_modifier)
+    res <- ComputePostmeanHnew.exact(fit = fit, y = y, Z = Z, X = X, modifier = modifier, Znew = Znew, mod_new = mod_new, sel = sel)
   }
   res
 }
@@ -54,15 +48,17 @@ ComputePostmeanHnew <- function(fit, y = NULL, Z = NULL, X = NULL, Znew = NULL, 
 #'
 #' Function to approximate the posterior mean and variance as a function of the estimated model parameters (e.g., tau, lambda, beta, and sigsq.eps)
 #' @param Znew matrix of new predictor values at which to predict new \code{h}, where each row represents a new observation. If set to NULL then will default to using the observed exposures Z.
+#' @param mod_new vector of new modifier values at which to predict new \code{h}. If set to NULL then will default to using the observed modifiers.
 #' @inheritParams kmbayes
 #' @inheritParams ExtractEsts
 #' @noRd
-ComputePostmeanHnew.approx <- function(fit, y = NULL, Z = NULL, X = NULL, Znew = NULL, sel = NULL, modifier = NULL) {
+ComputePostmeanHnew.approx <- function(fit, y = NULL, Z = NULL, X = NULL, modifier = NULL, Znew = NULL,  mod_new = NULL, sel = NULL) {
   
   if (inherits(fit, "bkmrfit")) {
     if (is.null(y)) y <- fit$y
     if (is.null(Z)) Z <- fit$Z
     if (is.null(X)) X <- fit$X
+    if (is.null(modifier)) modifier <- fit$modifier
   }
   
   kernel.method <- fit$kernel.method
@@ -78,6 +74,10 @@ ComputePostmeanHnew.approx <- function(fit, y = NULL, Z = NULL, X = NULL, Znew =
   }
   if(is.null(dim(X))) X <- matrix(X, ncol=1)
   
+  Znew <- cbind(Znew, mod_new)
+  Z <- cbind(Z, modifier)
+  X <- cbind(X, modifier)
+  
   ests <- ExtractEsts(fit, sel = sel)
   sigsq.eps <- ests$sigsq.eps[, "mean"]
   r <- ests$r[, "mean"]
@@ -89,8 +89,12 @@ ComputePostmeanHnew.approx <- function(fit, y = NULL, Z = NULL, X = NULL, Znew =
     ycont <- ests$ystar[, "mean"]
   }
   
-  Kpart <- makeKpart(r, Z, modifier = modifier)
+  Kpart <- makeKpart(r, Z)
   K <- exp(-Kpart)
+  if(!is.null(modifier)){
+    zero_idx <- outer((modifier+1), (modifier+1), "*")
+    K[zero_idx == 2] <- 0
+  }
   V <- diag(1, nrow(Z), nrow(Z)) + lambda[1]*K
   cholV <- chol(V)
   Vinv <- chol2inv(cholV)
@@ -100,8 +104,12 @@ ComputePostmeanHnew.approx <- function(fit, y = NULL, Z = NULL, X = NULL, Znew =
     n0 <- nrow(Z)
     n1 <- nrow(Znew)
     nall <- n0 + n1
-    Kpartall <- makeKpart(r, rbind(Z, Znew), modifier = modifier)
+    Kpartall <- makeKpart(r, rbind(Z, Znew))
     Kmat <- exp(-Kpartall)
+    if(!is.null(modifier)){
+      zero_idx <- outer((modifier+1), (modifier+1), "*")
+      Kmat[zero_idx == 2] <- 0
+    }
     Kmat0 <- Kmat[1:n0,1:n0 ,drop=FALSE]
     Kmat1 <- Kmat[(n0+1):nall,(n0+1):nall ,drop=FALSE]
     Kmat10 <- Kmat[(n0+1):nall,1:n0 ,drop=FALSE]
@@ -130,12 +138,13 @@ ComputePostmeanHnew.approx <- function(fit, y = NULL, Z = NULL, X = NULL, Znew =
 #' @inheritParams ExtractEsts
 #' 
 #' @noRd
-ComputePostmeanHnew.exact <- function(fit, y = NULL, Z = NULL, X = NULL, Znew = NULL, sel = NULL, modifier = NULL) {
+ComputePostmeanHnew.exact <- function(fit, y = NULL, Z = NULL, X = NULL, modifier = NULL, Znew = NULL, mod_new = NULL, sel = NULL) {
   
   if (inherits(fit, "bkmrfit")) {
     if (is.null(y)) y <- fit$y
     if (is.null(Z)) Z <- fit$Z
     if (is.null(X)) X <- fit$X
+    if (is.null(modifier)) modifier <- fit$modifier
   }
   
   kernel.method <- fit$kernel.method
@@ -154,6 +163,10 @@ ComputePostmeanHnew.exact <- function(fit, y = NULL, Z = NULL, X = NULL, Znew = 
   }
   
   if (is.null(dim(X))) X <- matrix(X, ncol=1)
+  
+  Znew <- cbind(Znew, mod_new)
+  Z <- cbind(Z, modifier)
+  X <- cbind(X, modifier)
   
   # if (!is.null(fit$Vinv)) {
   #   sel <- attr(fit$Vinv, "sel")
@@ -186,9 +199,13 @@ ComputePostmeanHnew.exact <- function(fit, y = NULL, Z = NULL, X = NULL, Znew = 
       ycont <- fit$ystar[s, ]
     }
     
-    Kpart <- makeKpart(r, Z, modifier = modifier)
+    Kpart <- makeKpart(r, Z)
     K <- exp(-Kpart)
-    Vcomps <- makeVcomps(r = r, lambda = lambda, Z = Z, data.comps = data.comps)
+    if(!is.null(modifier)){
+      zero_idx <- outer((modifier+1), (modifier+1), "*")
+      K[zero_idx == 2] <- 0
+    }
+    Vcomps <- makeVcomps(r = r, lambda = lambda, Z = Z, data.comps = data.comps, modifier = kern_modifier)
     Vinv <- Vcomps$Vinv
     # if (is.null(fit$Vinv)) {
     # V <- diag(1, nrow(Z), nrow(Z)) + lambda[1]*K
@@ -203,8 +220,12 @@ ComputePostmeanHnew.exact <- function(fit, y = NULL, Z = NULL, X = NULL, Znew = 
       n0 <- nrow(Z)
       n1 <- nrow(Znew)
       nall <- n0 + n1
-      Kpartall <- makeKpart(r, rbind(Z, Znew), modifier = modifier)
+      Kpartall <- makeKpart(r, rbind(Z, Znew))
       Kmat <- exp(-Kpartall)
+      if(!is.null(modifier)){
+        zero_idx <- outer((modifier+1), (modifier+1), "*")
+        Kpartall[zero_idx == 2] <- 0
+      }
       Kmat0 <- Kmat[1:n0,1:n0 ,drop=FALSE]
       Kmat1 <- Kmat[(n0+1):nall,(n0+1):nall ,drop=FALSE]
       Kmat10 <- Kmat[(n0+1):nall,1:n0 ,drop=FALSE]

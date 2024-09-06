@@ -2,7 +2,7 @@
 # Kpart <- as.matrix(dist(sqrt(matrix(r, byrow=TRUE, nrow(Z), ncol(Z)))*Z))^2
 # Kpart
 # }
-makeKpart <- function(r, Z1, Z2 = NULL, modifier = NULL) {
+makeKpart <- function(r, Z1, Z2 = NULL) {
   Z1r <- sweep(Z1, 2, sqrt(r), "*")
   if (is.null(Z2)) {
     Z2r <- Z1r
@@ -10,16 +10,17 @@ makeKpart <- function(r, Z1, Z2 = NULL, modifier = NULL) {
     Z2r <- sweep(Z2, 2, sqrt(r), "*")
   }
   Kpart <- fields::rdist(Z1r, Z2r)^2
-  if(!is.null(modifier)){
-    zero_idx <- outer((modifier+1), (modifier+1), "*")
-    Kpart[zero_idx == 2] <- 0
-  }
   Kpart
 }
 makeVcomps <- function(r, lambda, Z, data.comps, modifier = NULL) {
   if (is.null(data.comps$knots)) {
-    Kpart <- makeKpart(r, Z, modifier = modifier)
-    V <- diag(1, nrow(Z), nrow(Z)) + lambda[1]*exp(-Kpart)
+    Kpart <- makeKpart(r, Z)
+    K <- exp(-Kpart)
+    if(!is.null(modifier)){
+      zero_idx <- outer((modifier+1), (modifier+1), "*")
+      K[zero_idx == 2] <- 0
+    }
+    V <- diag(1, nrow(Z), nrow(Z)) + lambda[1]*K
     if (data.comps$nlambda == 2) {
       V <- V + lambda[2]*data.comps$crossTT
     }
@@ -38,8 +39,16 @@ makeVcomps <- function(r, lambda, Z, data.comps, modifier = NULL) {
     # K0 <- Kall[1:n0, 1:n0 ,drop=FALSE]
     # K1 <- Kall[(n0+1):nall, (n0+1):nall ,drop=FALSE]
     # K10 <- Kall[(n0+1):nall, 1:n0 ,drop=FALSE]
-    K1 <- exp(-makeKpart(r, data.comps$knots, modifier = modifier))
-    K10 <- exp(-makeKpart(r, data.comps$knots, Z, modifier = modifier))
+    K1 <- exp(-makeKpart(r, data.comps$knots))
+    if(!is.null(modifier)){
+      zero_idx <- outer((modifier+1), (modifier+1), "*")
+      K1[zero_idx == 2] <- 0
+    }
+    K10 <- exp(-makeKpart(r, data.comps$knots, Z))
+    if(!is.null(modifier)){
+      zero_idx <- outer((modifier+1), (modifier+1), "*")
+      K10[zero_idx == 2] <- 0
+    }
     Q <- K1 + diag(nugget, n1, n1)
     R <- Q + lambda[1]*tcrossprod(K10)
     cholQ <- chol(Q)

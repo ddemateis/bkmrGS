@@ -239,8 +239,12 @@ h.update <- function(lambda, Vcomps, sigsq.eps, y, X, beta, r, Z, data.comps, mo
     Vcomps <- makeVcomps(r = r, lambda = lambda, Z = Z, data.comps = data.comps)
   }
 	if(is.null(Vcomps$Q)) {
-		Kpart <- makeKpart(r, Z, modifier = modifier)
+		Kpart <- makeKpart(r, Z)
 		K <- exp(-Kpart)
+		if(!is.null(modifier)){
+		  zero_idx <- outer((modifier+1), (modifier+1), "*")
+		  K[zero_idx == 2] <- 0
+		}
 		Vinv <- Vcomps$Vinv
 		lambda <- lambda[1] ## in case with random intercept (randint==TRUE), where lambda is 2-dimensional
 		lamKVinv <- lambda*K%*%Vinv
@@ -275,8 +279,16 @@ newh.update <- function(Z, Znew, Vcomps, lambda, sigsq.eps, r, y, X, beta, data.
 		# Kmat0 <- Kmat[1:n0,1:n0 ,drop=FALSE]
 		# Kmat1 <- Kmat[(n0+1):nall,(n0+1):nall ,drop=FALSE]
 		# Kmat10 <- Kmat[(n0+1):nall,1:n0 ,drop=FALSE]
-		Kmat1 <- exp(-makeKpart(r, Znew, modifier = modifier))
-		Kmat10 <- exp(-makeKpart(r, Znew, Z, modifier = modifier))
+		Kmat1 <- exp(-makeKpart(r, Znew))
+		if(!is.null(modifier)){
+		  zero_idx <- outer((modifier+1), (modifier+1), "*")
+		  Kmat1[zero_idx == 2] <- 0
+		}
+		Kmat10 <- exp(-makeKpart(r, Znew, Z))
+		if(!is.null(modifier)){
+		  zero_idx <- outer((modifier+1), (modifier+1), "*")
+		  Kmat10[zero_idx == 2] <- 0
+		}
 
 		if(is.null(Vcomps)) {
 			Vcomps <- makeVcomps(r = r, lambda = lambda, Z = Z, data.comps = data.comps, modifier = modifier)
@@ -301,7 +313,11 @@ newh.update <- function(Z, Znew, Vcomps, lambda, sigsq.eps, r, y, X, beta, data.
 		# Kmat0 <- Kmat[1:n0,1:n0 ,drop=FALSE]
 		# Kmat1 <- Kmat[(n0+1):nall,(n0+1):nall ,drop=FALSE]
 		# Kmat10 <- Kmat[(n0+1):nall,1:n0 ,drop=FALSE]
-		Kmat10 <- exp(-makeKpart(r, Znew, data.comps$knots, modifier = modifier))
+		Kmat10 <- exp(-makeKpart(r, Znew, data.comps$knots))
+		if(!is.null(modifier)){
+		  zero_idx <- outer((modifier+1), (modifier+1), "*")
+		  Kmat10[zero_idx == 2] <- 0
+		}
 
 		if(is.null(Vcomps)) {
 			Vcomps <- makeVcomps(r = r, lambda = lambda, Z = Z, data.comps = data.comps, modifier = modifier)
@@ -364,8 +380,12 @@ newh.postmean <- function(fit, Znew, sel, modifier = NULL) {
 		n0 <- nrow(Z)
 		n1 <- nrow(Znew)
 		nall <- n0 + n1
-		Kpartall <- makeKpart(r, rbind(Z, Znew), modifier = kern_modifier)
+		Kpartall <- makeKpart(r, rbind(Z, Znew))
 		Kmat <- exp(-Kpartall)
+		if(!is.null(kern_modifier)){
+		  zero_idx <- outer((modifier+1), (modifier+1), "*")
+		  Kmat[zero_idx == 2] <- 0
+		}
 		Kmat0 <- Kmat[1:n0,1:n0 ,drop=FALSE]
 		Kmat1 <- Kmat[(n0+1):nall,(n0+1):nall ,drop=FALSE]
 		Kmat10 <- Kmat[(n0+1):nall,1:n0 ,drop=FALSE]
@@ -380,14 +400,21 @@ newh.postmean <- function(fit, Znew, sel, modifier = NULL) {
 		n0 <- nrow(data.comps$knots)
 		n1 <- nrow(Znew)
 		nall <- n0 + n1
-		Kpartall <- makeKpart(r, rbind(data.comps$knots, Znew), modifier = kern_modifier)
+		Kpartall <- makeKpart(r, rbind(data.comps$knots, Znew))
 		# Kmat <- exp(-Kpartall)
 		# Kmat0 <- Kmat[1:n0,1:n0 ,drop=FALSE]
 		# Kmat1 <- Kmat[(n0+1):nall,(n0+1):nall ,drop=FALSE]
 		# Kmat10 <- Kmat[(n0+1):nall,1:n0 ,drop=FALSE]
-		Kmat1 <- exp(-makeKpart(r, Znew, modifier = kern_modifier))
-		Kmat10 <- exp(-makeKpart(r, Znew, data.comps$knots, modifier = kern_modifier))
-
+		Kmat1 <- exp(-makeKpart(r, Znew))
+		if(!is.null(kern_modifier)){
+		  zero_idx <- outer((modifier+1), (modifier+1), "*")
+		  Kmat1[zero_idx == 2] <- 0
+		}
+		Kmat10 <- exp(-makeKpart(r, Znew, data.comps$knots))
+		if(!is.null(kern_modifier)){
+		  zero_idx <- outer((modifier+1), (modifier+1), "*")
+		  Kmat10[zero_idx == 2] <- 0
+		}
 		Vcomps <- makeVcomps(r = r, lambda = lambda, Z = Z, data.comps = data.comps, modifier = kern_modifier)
 
 		Sigma.hnew <- lambda[1]*sigsq.eps*Kmat10 %*% Vcomps$Rinv %*% t(Kmat10)

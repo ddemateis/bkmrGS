@@ -15,6 +15,7 @@ SingVarIntSummaries(
   method = "approx",
   sel = NULL,
   z.names = colnames(Z),
+  modifier = NULL,
   ...
 )
 }
@@ -38,6 +39,8 @@ SingVarIntSummaries(
 \item{sel}{logical expression indicating samples to keep; defaults to keeping the second half of all samples}
 
 \item{z.names}{optional vector of names for the columns of \code{z}}
+
+\item{modifier}{a vector of binary values of length \code{n} that may modify the exposure-response associations.}
 
 \item{...}{other arguments to pass on to the prediction function}
 }

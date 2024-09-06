@@ -9,7 +9,9 @@ ComputePostmeanHnew(
   y = NULL,
   Z = NULL,
   X = NULL,
+  modifier = NULL,
   Znew = NULL,
+  mod_new = NULL,
   sel = NULL,
   method = "approx"
 )
@@ -23,7 +25,11 @@ ComputePostmeanHnew(
 
 \item{X}{an \code{n}-by-\code{K} matrix of covariate data where each row represents an observation and each column represents a covariate. Should not contain an intercept column.}
 
+\item{modifier}{a vector of binary values of length \code{n} that may modify the exposure-response associations.}
+
 \item{Znew}{matrix of new predictor values at which to predict new \code{h}, where each row represents a new observation. If set to NULL then will default to using the observed exposures Z.}
+
+\item{mod_new}{vector of new modifier values at which to predict new \code{h}. If set to NULL then will default to using the observed modifiers.}
 
 \item{sel}{selects which iterations of the MCMC sampler to use for inference; see details}
 
