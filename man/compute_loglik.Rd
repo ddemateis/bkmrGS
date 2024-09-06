@@ -4,10 +4,12 @@
 \alias{compute_loglik}
 \title{Compute log likelihood matrix}
 \usage{
-compute_loglik(fit)
+compute_loglik(fit, sel = NULL)
 }
 \arguments{
 \item{fit}{an object of class "bkmrfit"}
+
+\item{sel}{A vector selecting which iterations of the BKMR fit should be retained for inference. If not specified, will default to keeping every 10 iterations after dropping the first half of samples, or if this results in fewer than 100 iterations, than 100 iterations are kept}
 }
 \value{
 a matrix with a row for each posterior sample and column for each data point
