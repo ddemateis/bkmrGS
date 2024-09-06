@@ -1,78 +1,33 @@
-#' @importFrom mvtnorm dmvnorm
-log_norm_density <- function(x, y, X1, Z, data.comps, modifier = NULL){
-  
-  #extract parameters from input vector x
-  sigma2 <- as.numeric(x[grep("sigma2", names(x))])
-  r <- as.numeric(x[grep("r", names(x))])
-  lambda <- as.numeric(x[grep("lambda", names(x))])
-  beta_mat <- as.matrix(x[grep("beta", names(x))])
-  
-  #computations
-  K <- exp(-makeKpart(r, Z, modifier = modifier))
-  V <- diag(1, nrow(Z), nrow(Z)) + lambda[1]*K #I + lambda*K
-  if (data.comps$nlambda == 2) {
-    V <- V + lambda[2]*data.comps$crossTT
-  }
-  cov_mat <- as.matrix(sigma2*V)
-  
-  #loglikelihood matrix
-  ll_mat <- dmvnorm(x = y, 
-                    mean = X1%*%t(beta_mat), #X * beta
-                    sigma = cov_mat, #sigma2 * V
-                    log = T)
-  
-  return(ll_mat)
-}
-
 #' Compute log likelihood matrix
 #'
 #' Compute log likelihood matrix for WAIC computation
 #'
 #' @export
 #' 
+#' @importFrom stats dnorm
+#' 
 #' @param fit an object of class "bkmrfit"
+#' @param sel A vector selecting which iterations of the BKMR fit should be retained for inference. If not specified, will default to keeping every 10 iterations after dropping the first half of samples, or if this results in fewer than 100 iterations, than 100 iterations are kept
 #' @return a matrix with a row for each posterior sample and column for each data point
-
-compute_loglik <- function(fit){
+compute_loglik <- function(fit, sel = NULL){
   
-  X1 <- as.matrix(fit$X)
-  Z <- as.matrix(fit$Z)
-  y <- fit$y
-  modifier <- fit$modifier
-  Z <- cbind(Z, modifier)
-  X1 <- as.matrix(cbind(X1, modifier))
-  data.comps <- fit$data.comps
-  kernel.method <- fit$kernel.method
-  
-  if(kernel.method == "one"){
-    kern_modifier <- NULL
-  }else if (kernel.method == "two"){
-    kern_modifier <- modifier
+  #add condition for default if sel not provided
+  if(is.null(sel)){
+    
   }
   
-  posterior_mat <- data.frame(sigma2 = fit$sigsq.eps,
-                              r = fit$r,
-                              beta = fit$beta,
-                              lambda = fit$lambda)
-  
-  loglik_samps <- matrix(NA, nrow = nrow(posterior_mat), ncol = length(y))
-  for(i in 1:nrow(posterior_mat)){
-    loglik_samps[i,] <- log_norm_density(x = posterior_mat[i,], 
-                                         y = y, 
-                                         X1 = X1, 
-                                         Z = Z, 
-                                         data.comps = data.comps,
-                                         modifier = kern_modifier)
+  loglik_samps <- matrix(NA, nrow = length(sel), ncol = length(y))
+  for(s in sel){
+    sigma2 <- fit$sigsq.eps[s]
+    HXB <- SamplePred(fit, sel = s)
+    
+    #point-wise loglikelihood vector for n observations
+    loglik_samps[which(s == sel),] <- dnorm(x = fit$y, #length n
+                                            mean = HXB, #h + X * beta, length n
+                                            sd = sigma2, #sigma2, length 1
+                                            log = T) #ll_vec is length n
   }
   
   return(loglik_samps)
   
-  #error: Error in X1 %*% t(beta_mat) : non-conformable arguments
-  # loglik_samps <- apply(X = posterior_mat, 
-  #                       MARGIN = 1, 
-  #                       FUN = log_norm_density, 
-  #                       y = y, 
-  #                       X1 = X1, 
-  #                       Z = Z, 
-  #                       data.comps = data.comps)
 }
