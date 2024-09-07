@@ -16,7 +16,7 @@ compute_loglik <- function(fit, sel = NULL){
     
   }
   
-  loglik_samps <- matrix(NA, nrow = length(sel), ncol = length(y))
+  loglik_samps <- matrix(NA, nrow = length(sel), ncol = length(fit$y))
   for(s in sel){
     sigma2 <- fit$sigsq.eps[s]
     HXB <- SamplePred(fit, sel = s)
