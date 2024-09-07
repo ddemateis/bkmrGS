@@ -88,13 +88,21 @@ OverallRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
   point1 <- c(point1, m.fixed) #add the modifier value, 0 or 1 #added by DD
   if (method %in% c("approx", "exact")) {
     preds.fun <- function(znew) {
-      Z <- cbind(Z, modifier) #added by DD
-      X <- cbind(X, modifier) #added by DD
+      # Z <- cbind(Z, modifier) #added by DD
+      # X <- cbind(X, modifier) #added by DD
+      if(!is.null(fit$modifier)){
+        mod_new <- znew[, ncol(znew)]
+        znew <- znew[,1:(ncol(znew) - 1)]
+      }else{
+        mod_new <- NULL
+        znew <- znew
+      }
       ComputePostmeanHnew(fit = fit, 
                           y = y, 
                           Z = Z, 
                           X = X, 
                           Znew = znew, 
+                          mod_new = mod_new,
                           sel = sel, 
                           method = method,
                           modifier = kern_modifier)
@@ -145,13 +153,21 @@ VarRiskSummary <- function (whichz = 1, fit, y = NULL, Z = NULL, X = NULL,
                           qs.diff[1])
   if (method %in% c("approx", "exact")) {
     preds.fun <- function(znew){
-      Z <- cbind(Z, modifier)
-      X <- cbind(X, modifier)
+      # Z <- cbind(Z, modifier)
+      # X <- cbind(X, modifier)
+      if(!is.null(fit$modifier)){
+        mod_new <- znew[, ncol(znew)]
+        znew <- znew[,1:(ncol(znew) - 1)]
+      }else{
+        mod_new <- NULL
+        znew <- znew
+      }
       ComputePostmeanHnew(fit = fit, 
                           y = y, 
                           Z = Z, 
                           X = X, 
                           Znew = znew, 
+                          mod_new = mod_new,
                           sel = sel, 
                           method = method,
                           modifier = kern_modifier)

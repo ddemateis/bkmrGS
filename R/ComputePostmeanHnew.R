@@ -256,7 +256,7 @@ ComputePostmeanHnew.exact <- function(fit, y = NULL, Z = NULL, X = NULL, modifie
   ve <- var(postmean_mat)
   ev <- apply(postvar_arr, c(1, 2), mean)
   v <- ve + ev
-  ret <- list(postmean = m, postvar = v)
+  ret <- list(postmean = m, postvar = v, posterior = postmean_mat)
   
   ret
 }
