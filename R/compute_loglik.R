@@ -24,7 +24,7 @@ compute_loglik <- function(fit, sel = NULL){
     #point-wise loglikelihood vector for n observations
     loglik_samps[which(s == sel),] <- dnorm(x = fit$y, #length n
                                             mean = HXB, #h + X * beta, length n
-                                            sd = sigma2, #sigma2, length 1
+                                            sd = sqrt(sigma2), #sigma2, length 1
                                             log = T) #ll_vec is length n
   }
   
