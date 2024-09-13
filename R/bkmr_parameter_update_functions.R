@@ -268,7 +268,7 @@ h.update <- function(lambda, Vcomps, sigsq.eps, y, X, beta, r, Z, data.comps, mo
 	hcomps
 }
 
-newh.update <- function(Z, Znew, Vcomps, lambda, sigsq.eps, r, y, X, beta, data.comps, modifier = NULL) {
+newh.update <- function(Z, Znew, mod_new, Vcomps, lambda, sigsq.eps, r, y, X, beta, data.comps, modifier = NULL) {
 
 	if(is.null(data.comps$knots)) {
 		n0 <- nrow(Z)
@@ -286,7 +286,7 @@ newh.update <- function(Z, Znew, Vcomps, lambda, sigsq.eps, r, y, X, beta, data.
 		}
 		Kmat10 <- exp(-makeKpart(r, Znew, Z))
 		if(!is.null(modifier)){
-		  zero_idx <- outer((modifier+1), (modifier+1), "*")
+		  zero_idx <- outer((mod_new+1), (modifier+1), "*")
 		  Kmat10[zero_idx == 2] <- 0
 		}
 

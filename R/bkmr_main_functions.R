@@ -506,7 +506,7 @@ kmbayes <- function(y, Z, X = NULL,
     ## generate posterior samples of h(Znew) from its posterior P(hnew | beta, sigsq.eps, lambda, r, y)
     
     if (!is.null(Znew)) {
-      chain$hnew[s,] <- newh.update(Z = Z, Znew = Znew, Vcomps = Vcomps, lambda = chain$lambda[s,], sigsq.eps = chain$sigsq.eps[s], r = chain$r[s,], y = ycont, X = X, beta = chain$beta[s,], data.comps = data.comps, modifier = kern_modifier)
+      chain$hnew[s,] <- newh.update(Z = Z, Znew = Znew, mod_new = mod_new, Vcomps = Vcomps, lambda = chain$lambda[s,], sigsq.eps = chain$sigsq.eps[s], r = chain$r[s,], y = ycont, X = X, beta = chain$beta[s,], data.comps = data.comps, modifier = kern_modifier)
     }
     
     ###################################################
