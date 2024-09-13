@@ -66,6 +66,8 @@ SamplePred <- function(fit, Znew = NULL, Xnew = NULL, mod_new = NULL,
 
   if (is.null(Xnew)){
     Xnew <- X
+  }
+  if(is.null(mod_new)){
     mod_new <- modifier #added by DD
   }
   if (!inherits(Xnew, "matrix")) Xnew <- matrix(Xnew, nrow = 1)
