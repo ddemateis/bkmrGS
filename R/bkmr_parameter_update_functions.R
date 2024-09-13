@@ -281,7 +281,7 @@ newh.update <- function(Z, Znew, mod_new, Vcomps, lambda, sigsq.eps, r, y, X, be
 		# Kmat10 <- Kmat[(n0+1):nall,1:n0 ,drop=FALSE]
 		Kmat1 <- exp(-makeKpart(r, Znew))
 		if(!is.null(modifier)){
-		  zero_idx <- outer((modifier+1), (modifier+1), "*")
+		  zero_idx <- outer((mod_new+1), (mod_new+1), "*")
 		  Kmat1[zero_idx == 2] <- 0
 		}
 		Kmat10 <- exp(-makeKpart(r, Znew, Z))
