@@ -236,7 +236,7 @@ MHstep <- function(r, lambda, lambda.star, r.star, delta, delta.star, y, X, Z, b
 
 h.update <- function(lambda, Vcomps, sigsq.eps, y, X, beta, r, Z, data.comps, modifier=NULL) {
   if (is.null(Vcomps)) {
-    Vcomps <- makeVcomps(r = r, lambda = lambda, Z = Z, data.comps = data.comps)
+    Vcomps <- makeVcomps(r = r, lambda = lambda, Z = Z, data.comps = data.comps, modifier = modifier)
   }
 	if(is.null(Vcomps$Q)) {
 		Kpart <- makeKpart(r, Z)
