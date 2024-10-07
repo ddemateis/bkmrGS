@@ -9,13 +9,14 @@ SingVarIntSummaries(
   y = NULL,
   Z = NULL,
   X = NULL,
+  modifier = NULL,
   which.z = 1:ncol(Z),
   qs.diff = c(0.25, 0.75),
   qs.fixed = c(0.25, 0.75),
+  mod.diff = NULL,
   method = "approx",
   sel = NULL,
   z.names = colnames(Z),
-  modifier = NULL,
   ...
 )
 }
@@ -28,19 +29,21 @@ SingVarIntSummaries(
 
 \item{X}{an \code{n}-by-\code{K} matrix of covariate data where each row represents an observation and each column represents a covariate. Should not contain an intercept column.}
 
+\item{modifier}{a vector of binary values of length \code{n} that may modify the exposure-response associations.}
+
 \item{which.z}{vector indicating which variables (columns of \code{Z}) for which the summary should be computed}
 
 \item{qs.diff}{vector indicating the two quantiles at which to compute the single-predictor risk summary}
 
 \item{qs.fixed}{vector indicating the two quantiles at which to fix all of the remaining exposures in \code{Z}}
 
+\item{mod.diff}{vector of two modifier values at which to compute the single-predictor risk summary (only for models with modification). Either \code{c(0,1)}, \code{c(0,0,)}, or \code{c(1,1)}.}
+
 \item{method}{method for obtaining posterior summaries at a vector of new points. Options are "approx" and "exact"; defaults to "approx", which is faster particularly for large datasets; see details}
 
 \item{sel}{logical expression indicating samples to keep; defaults to keeping the second half of all samples}
 
 \item{z.names}{optional vector of names for the columns of \code{z}}
-
-\item{modifier}{a vector of binary values of length \code{n} that may modify the exposure-response associations.}
 
 \item{...}{other arguments to pass on to the prediction function}
 }
