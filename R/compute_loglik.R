@@ -11,10 +11,14 @@
 #' @return a matrix with a row for each posterior sample and column for each data point
 compute_loglik <- function(fit, sel = NULL){
   
-  #add condition for default if sel not provided
-  if(is.null(sel)){
-    
+  if (is.null(sel)) {
+    sel <- with(fit, seq(floor(iter/2) + 1, iter, 10))
+    if (length(sel) < 100) {
+      sel <- with(fit, seq(floor(iter/2) + 1, iter, length.out = 100))
+    }
+    sel <- unique(floor(sel))
   }
+  
   
   loglik_samps <- matrix(NA, nrow = length(sel), ncol = length(fit$y))
   for(s in sel){
