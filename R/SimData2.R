@@ -24,9 +24,11 @@ HFun <- function (z, opt = 1){
 #' @param opt Simulation scenario option: 1 for no modification, 2 for opposite effects, 3 for an effect in one group, and 4 for a scaled effect between groups
 #' @param SNR signal-to-noise ratio
 #' @param bin_mod 0 for group 1, 1 for group 2
+#' @param mod_DGM indicator for including modifier in data generating mechanism
 SimData2 <- function (opt = 1,
                       SNR = 10,
-                      bin_mod = 0){
+                      bin_mod = 0,
+                      mod_DGM = T){
   
   #data_standardized is lazy loaded
   med_vita <- median(data_standardized$vita)
@@ -60,7 +62,12 @@ SimData2 <- function (opt = 1,
   
   
   #mean response
-  mu <- X %*% beta.true + h + bin_mod #bin_mod is modifier, defaulting main effect to 1 for binary value 1
+  if(mod_DGM){
+    mu <- X %*% beta.true + h + bin_mod #bin_mod is modifier, defaulting main effect to 1 for binary value 1
+    
+  }else{
+    mu <- X %*% beta.true + h
+  }
   
   #set noise for specified SNR
   signal <- sd(mu)
