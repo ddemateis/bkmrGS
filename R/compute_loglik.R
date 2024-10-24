@@ -22,8 +22,8 @@ compute_loglik <- function(fit, sel = NULL){
   
   loglik_samps <- matrix(NA, nrow = length(sel), ncol = length(fit$y))
   for(s in sel){
-    sigma2 <- fit$sigsq.eps[s]
-    HXB <- SamplePred(fit, sel = s)
+    sigma2 <- fit$sigsq.eps[s] #sigma2, length 1
+    HXB <- SamplePred(fit, sel = s) #h + X * beta, length n
     
     #point-wise loglikelihood vector for n observations
     loglik_samps[which(s == sel),] <- dnorm(x = fit$y, #length n
@@ -32,6 +32,6 @@ compute_loglik <- function(fit, sel = NULL){
                                             log = T) #ll_vec is length n
   }
   
-  return(loglik_samps)
+  return(loglik_samps) #iter x obs
   
 }
