@@ -17,8 +17,8 @@ makeVcomps <- function(r, lambda, Z, data.comps, modifier = NULL) {
     Kpart <- makeKpart(r, Z)
     K <- exp(-Kpart)
     if(!is.null(modifier)){
-      zero_idx <- outer((modifier+1), (modifier+1), "*")
-      K[zero_idx == 2] <- 0
+      zero_idx <- outer((modifier+1), (modifier+1), "*") #1*1=1 or 2*2=4 is same group, 1*2=2 is different group
+      K[zero_idx == 2] <- 0 
     }
     V <- diag(1, nrow(Z), nrow(Z)) + lambda[1]*K
     if (data.comps$nlambda == 2) {
@@ -41,12 +41,12 @@ makeVcomps <- function(r, lambda, Z, data.comps, modifier = NULL) {
     # K10 <- Kall[(n0+1):nall, 1:n0 ,drop=FALSE]
     K1 <- exp(-makeKpart(r, data.comps$knots))
     if(!is.null(modifier)){
-      zero_idx <- outer((modifier+1), (modifier+1), "*")
+      zero_idx <- outer((modifier+1), (modifier+1), "*") #1*1=1 or 2*2=4 is same group, 1*2=2 is different group
       K1[zero_idx == 2] <- 0
     }
     K10 <- exp(-makeKpart(r, data.comps$knots, Z))
     if(!is.null(modifier)){
-      zero_idx <- outer((modifier+1), (modifier+1), "*")
+      zero_idx <- outer((modifier+1), (modifier+1), "*") #1*1=1 or 2*2=4 is same group, 1*2=2 is different group
       K10[zero_idx == 2] <- 0
     }
     Q <- K1 + diag(nugget, n1, n1)
@@ -211,14 +211,18 @@ kmbayes <- function(y, Z, X = NULL,
   }
   
   #add the modifier, if given, to the exposure matrix and covariate matrix
-  if(!is.null(modifier)){#added by DD
-    colnames(Z) <- paste0("z",1:ncol(Z))#added by DD
-    Z <- cbind(Z, modifier) #added by DD
-    if(is.null(colnames(X))){#added by DD
-      colnames(X) <- paste0("X",1:ncol(X))#added by DD
-    }#added by DD
-    X <- cbind(X, modifier) #added by DD
-  }#added by DD
+  if(!is.null(modifier)){
+    colnames(Z) <- paste0("z",1:ncol(Z))
+    if(kernel.method == "one"){ #add the modifier into the kernel for the one-kernel interaction approach
+      Z <- cbind(Z, modifier) 
+    }else{ #do not add the modifier in the kernel for the two-kernel approach
+      Z <- Z
+    }
+    if(is.null(colnames(X))){#always add the modifier into the covaraites when modifier is provided
+      colnames(X) <- paste0("X",1:ncol(X))
+    }
+    X <- cbind(X, modifier) 
+  }
   
   
   
@@ -494,7 +498,7 @@ kmbayes <- function(y, Z, X = NULL,
     ## generate posterior sample of h(z) from its posterior P(h | beta, sigsq.eps, lambda, r, y)
     
     if (est.h) {
-      hcomps <- h.update(lambda = chain$lambda[s,], Vcomps = Vcomps, sigsq.eps = chain$sigsq.eps[s], y = ycont, X = X, beta = chain$beta[s,], r = chain$r[s,], Z = Z, data.comps = data.comps, modifier = kern_modifier)
+      hcomps <- h.update(lambda = chain$lambda[s,], Vcomps = Vcomps, sigsq.eps = chain$sigsq.eps[s], y = ycont, X = X, beta = chain$beta[s,], r = chain$r[s,], Z = Z, data.comps = data.comps, modifier = modifier, kernel.method = kernel.method)
       chain$h.hat[s,] <- hcomps$hsamp
       if (!is.null(hcomps$hsamp.star)) { ## GPP
         Vcomps$hsamp.star <- hcomps$hsamp.star
@@ -506,7 +510,7 @@ kmbayes <- function(y, Z, X = NULL,
     ## generate posterior samples of h(Znew) from its posterior P(hnew | beta, sigsq.eps, lambda, r, y)
     
     if (!is.null(Znew)) {
-      chain$hnew[s,] <- newh.update(Z = Z, Znew = Znew, mod_new = mod_new, Vcomps = Vcomps, lambda = chain$lambda[s,], sigsq.eps = chain$sigsq.eps[s], r = chain$r[s,], y = ycont, X = X, beta = chain$beta[s,], data.comps = data.comps, modifier = kern_modifier)
+      chain$hnew[s,] <- newh.update(Z = Z, Znew = Znew, mod_new = mod_new, Vcomps = Vcomps, lambda = chain$lambda[s,], sigsq.eps = chain$sigsq.eps[s], r = chain$r[s,], y = ycont, X = X, beta = chain$beta[s,], data.comps = data.comps, modifier = modifier, kernel.method = kernel.method)
     }
     
     ###################################################
@@ -527,7 +531,11 @@ kmbayes <- function(y, Z, X = NULL,
   chain$control.params <- control.params
   if(!is.null(modifier)){#added by DD
     chain$X <- X[,1:(ncol(X)-1)]#added by DD
-    chain$Z <- Z[,1:(ncol(Z)-1)]#added by DD
+    if(kernel.method == "one"){
+      chain$Z <- Z[,1:(ncol(Z)-1)]#added by DD
+    }else{
+      chain$Z <- Z
+    }
     chain$modifier <- modifier #added by DD
   }else{#added by DD
     chain$X <- X#added by DD
