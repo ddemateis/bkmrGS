@@ -48,17 +48,22 @@ SamplePred <- function(fit, Znew = NULL, Xnew = NULL, mod_new = NULL,
   
   kernel.method <- fit$kernel.method
   if(kernel.method == "one"){
-    kern_modifier <- NULL
+    Z <- cbind(Z, modifier)
   }else if (kernel.method == "two"){
-    kern_modifier <- modifier
+    Z <- Z
   }
-  
+
   
   if (!is.null(Znew)) { #what is Znew is NULL?
     if (is.null(dim(Znew))) Znew <- matrix(Znew, nrow = 1)
     if (inherits(Znew, "data.frame")) Znew <- data.matrix(Znew)
-    Z <- cbind(Z, modifier) #added by DD
-    Znew <- cbind(Znew, mod_new) #added by DD
+    
+    if(kernel.method == "one"){
+      Znew <- cbind(Znew, mod_new)
+    }else if(kernel.method == "two"){
+      Znew <- Znew
+    }
+    
     if (ncol(Z) != ncol(Znew)) {
       stop("Znew must have the same number of columns as Z")
     }
@@ -108,10 +113,10 @@ SamplePred <- function(fit, Znew = NULL, Xnew = NULL, mod_new = NULL,
     } else if (family == "binomial") {
       ycont <- fit$ystar[s, ]
     }
-    if (!is.null(Znew)) {
-      hsamp <- newh.update(Z = Z, Znew = Znew, mod_new = mod_new, Vcomps = NULL, lambda = lambda[s, ], sigsq.eps = sigsq.eps[s], r = r[s, ], y = ycont, X = X, beta = beta.samp, data.comps = data.comps, modifier = kern_modifier)  
-    } else {
-      hsamp <- h.update(lambda = lambda[s, ], Vcomps = NULL, sigsq.eps = sigsq.eps[s], y = ycont, X = X, beta = beta.samp, r = r[s, ], Z = Z, data.comps = data.comps, modifier = kern_modifier)$hsamp
+    if (!is.null(Znew)) { #Z and X d
+      hsamp <- newh.update(Z = Z, Znew = Znew, mod_new = mod_new, Vcomps = NULL, lambda = lambda[s, ], sigsq.eps = sigsq.eps[s], r = r[s, ], y = ycont, X = X, beta = beta.samp, data.comps = data.comps, modifier = modifier, kernel.method = kernel.method)  
+    } else { 
+      hsamp <- h.update(lambda = lambda[s, ], Vcomps = NULL, sigsq.eps = sigsq.eps[s], y = ycont, X = X, beta = beta.samp, r = r[s, ], Z = Z, data.comps = data.comps, modifier = modifier, kernel.method = kernel.method)$hsamp
     }
     
     Xbeta <- drop(Xnew %*% beta.samp)
