@@ -234,15 +234,24 @@ MHstep <- function(r, lambda, lambda.star, r.star, delta, delta.star, y, X, Z, b
 	return(list(r=r, lambda=lambda, delta=delta, acc=acc, Vcomps=Vcomps, move.type=move.type))
 }
 
-h.update <- function(lambda, Vcomps, sigsq.eps, y, X, beta, r, Z, data.comps, modifier=NULL) {
+h.update <- function(lambda, Vcomps, sigsq.eps, y, X, beta, r, Z, data.comps, modifier=NULL, kernel.method) {
+  
+  #set the modifier that is passed to Vcomps to be null if using one-kernel method, because it is not needed to block the kernel
+  #and set modifier passed to Vcomps to be the modifier if using two-kernel method, because it is needed to block the kernel
+  if(kernel.method == "one"){
+    kern_modifier <- NULL
+  }else if(kernel.method == "two"){
+    kern_modifier <- modifier
+  }
+  
   if (is.null(Vcomps)) {
-    Vcomps <- makeVcomps(r = r, lambda = lambda, Z = Z, data.comps = data.comps, modifier = modifier)
+    Vcomps <- makeVcomps(r = r, lambda = lambda, Z = Z, data.comps = data.comps, modifier = kern_modifier)
   }
 	if(is.null(Vcomps$Q)) {
 		Kpart <- makeKpart(r, Z)
 		K <- exp(-Kpart)
-		if(!is.null(modifier)){
-		  zero_idx <- outer((modifier+1), (modifier+1), "*")
+		if(kernel.method == "two"){
+		  zero_idx <- outer((modifier+1), (modifier+1), "*")#1*1=1 or 2*2=4 is same group, 1*2=2 is different group
 		  K[zero_idx == 2] <- 0
 		}
 		Vinv <- Vcomps$Vinv
@@ -268,8 +277,15 @@ h.update <- function(lambda, Vcomps, sigsq.eps, y, X, beta, r, Z, data.comps, mo
 	hcomps
 }
 
-newh.update <- function(Z, Znew, mod_new, Vcomps, lambda, sigsq.eps, r, y, X, beta, data.comps, modifier = NULL) {
+newh.update <- function(Z, Znew, mod_new, Vcomps, lambda, sigsq.eps, r, y, X, beta, data.comps, modifier = NULL, kernel.method) {
 
+  #set the modifier that is passed to Vcomps to be null if using two-kernel method (because modifier is not in kernel)
+  if(kernel.method == "one"){
+    kern_modifier <- NULL
+  }else if(kernel.method == "two"){
+    kern_modifier <- modifier
+  }
+  
 	if(is.null(data.comps$knots)) {
 		n0 <- nrow(Z)
 		n1 <- nrow(Znew)
@@ -280,18 +296,18 @@ newh.update <- function(Z, Znew, mod_new, Vcomps, lambda, sigsq.eps, r, y, X, be
 		# Kmat1 <- Kmat[(n0+1):nall,(n0+1):nall ,drop=FALSE]
 		# Kmat10 <- Kmat[(n0+1):nall,1:n0 ,drop=FALSE]
 		Kmat1 <- exp(-makeKpart(r, Znew))
-		if(!is.null(modifier)){
-		  zero_idx <- outer((mod_new+1), (mod_new+1), "*")
+		if(kernel.method == "two"){
+		  zero_idx <- outer((mod_new+1), (mod_new+1), "*") #1*1=1 or 2*2=4 is same group, 1*2=2 is different group
 		  Kmat1[zero_idx == 2] <- 0
 		}
 		Kmat10 <- exp(-makeKpart(r, Znew, Z))
-		if(!is.null(modifier)){
-		  zero_idx <- outer((mod_new+1), (modifier+1), "*")
+		if(kernel.method == "two"){
+		  zero_idx <- outer((mod_new+1), (modifier+1), "*")#1*1=1 or 2*2=4 is same group, 1*2=2 is different group
 		  Kmat10[zero_idx == 2] <- 0
 		}
 
 		if(is.null(Vcomps)) {
-			Vcomps <- makeVcomps(r = r, lambda = lambda, Z = Z, data.comps = data.comps, modifier = modifier)
+			Vcomps <- makeVcomps(r = r, lambda = lambda, Z = Z, data.comps = data.comps, modifier = kern_modifier)
 		}
 		Vinv <- Vcomps$Vinv
 
@@ -315,12 +331,12 @@ newh.update <- function(Z, Znew, mod_new, Vcomps, lambda, sigsq.eps, r, y, X, be
 		# Kmat10 <- Kmat[(n0+1):nall,1:n0 ,drop=FALSE]
 		Kmat10 <- exp(-makeKpart(r, Znew, data.comps$knots))
 		if(!is.null(modifier)){
-		  zero_idx <- outer((modifier+1), (modifier+1), "*")
+		  zero_idx <- outer((modifier+1), (modifier+1), "*")#1*1=1 or 2*2=4 is same group, 1*2=2 is different group
 		  Kmat10[zero_idx == 2] <- 0
 		}
 
 		if(is.null(Vcomps)) {
-			Vcomps <- makeVcomps(r = r, lambda = lambda, Z = Z, data.comps = data.comps, modifier = modifier)
+			Vcomps <- makeVcomps(r = r, lambda = lambda, Z = Z, data.comps = data.comps, modifier = kern_modifier)
 			h.star.postvar.sqrt <- sqrt(sigsq.eps*lambda[1])*forwardsolve(t(Vcomps$cholR), Vcomps$Q)
 			h.star.postmean <- lambda[1]*Vcomps$Q %*% Vcomps$Rinv %*% Vcomps$K10 %*% (y - X %*% beta)
 			Vcomps$hsamp.star <- h.star.postmean + crossprod(h.star.postvar.sqrt, rnorm(length(h.star.postmean)))
@@ -383,7 +399,7 @@ newh.postmean <- function(fit, Znew, sel, modifier = NULL) {
 		Kpartall <- makeKpart(r, rbind(Z, Znew))
 		Kmat <- exp(-Kpartall)
 		if(!is.null(kern_modifier)){
-		  zero_idx <- outer((modifier+1), (modifier+1), "*")
+		  zero_idx <- outer((modifier+1), (modifier+1), "*")#1*1=1 or 2*2=4 is same group, 1*2=2 is different group
 		  Kmat[zero_idx == 2] <- 0
 		}
 		Kmat0 <- Kmat[1:n0,1:n0 ,drop=FALSE]
@@ -407,12 +423,12 @@ newh.postmean <- function(fit, Znew, sel, modifier = NULL) {
 		# Kmat10 <- Kmat[(n0+1):nall,1:n0 ,drop=FALSE]
 		Kmat1 <- exp(-makeKpart(r, Znew))
 		if(!is.null(kern_modifier)){
-		  zero_idx <- outer((modifier+1), (modifier+1), "*")
+		  zero_idx <- outer((modifier+1), (modifier+1), "*")#1*1=1 or 2*2=4 is same group, 1*2=2 is different group
 		  Kmat1[zero_idx == 2] <- 0
 		}
 		Kmat10 <- exp(-makeKpart(r, Znew, data.comps$knots))
 		if(!is.null(kern_modifier)){
-		  zero_idx <- outer((modifier+1), (modifier+1), "*")
+		  zero_idx <- outer((modifier+1), (modifier+1), "*")#1*1=1 or 2*2=4 is same group, 1*2=2 is different group
 		  Kmat10[zero_idx == 2] <- 0
 		}
 		Vcomps <- makeVcomps(r = r, lambda = lambda, Z = Z, data.comps = data.comps, modifier = kern_modifier)
