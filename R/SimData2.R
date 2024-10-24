@@ -25,10 +25,12 @@ HFun <- function (z, opt = 1){
 #' @param SNR signal-to-noise ratio
 #' @param bin_mod 0 for group 1, 1 for group 2
 #' @param mod_DGM indicator for including modifier in data generating mechanism
+#' @param sim_exp indicator for using simulated exposure values and covariates. Not recommended for simulation
 SimData2 <- function (opt = 1,
                       SNR = 10,
                       bin_mod = 0,
-                      mod_DGM = T){
+                      mod_DGM = T,
+                      sim_exp = F){
   
   #data_standardized is lazy loaded
   med_vita <- median(data_standardized$vita)
@@ -43,17 +45,23 @@ SimData2 <- function (opt = 1,
   
   #generate exposures
   M <- 2
-  #Z <- matrix(rnorm(n * M), n, M)
-  Z <- cbind(scale(dta$pb_ln), scale(dta$mn_ln))
+  if(sim_exp){
+    Z <- matrix(rnorm(n * M), n, M)
+  }else{
+    Z <- cbind(scale(dta$pb_ln), scale(dta$mn_ln))
+  }
   colnames(Z) <- paste0("z", 1:M)
   
   #generate covariates
-  # X <- cbind(3 * cos(Z[,1]) + 2 * rnorm(n),
-  #            3 * cos(Z[,2]) + 2 * rnorm(n))
-  X <- cbind(scale(dta$X1),
-             scale(dta$X2),
-             scale(dta$X3))
-    
+  if(sim_exp){
+    X <- cbind(3 * cos(Z[,1]) + 2 * rnorm(n),
+               3 * cos(Z[,2]) + 2 * rnorm(n))
+  }else{
+    X <- cbind(scale(dta$X1),
+               scale(dta$X2),
+               scale(dta$X3))
+  }
+  
   #randomly generate covariate coefficients
   beta.true <- rnorm(ncol(X))
   
