@@ -4,7 +4,7 @@
 \alias{SimData2}
 \title{Simulate dataset with modifier}
 \usage{
-SimData2(opt = 1, SNR = 10, bin_mod = 0, mod_DGM = T)
+SimData2(opt = 1, SNR = 10, bin_mod = 0, mod_DGM = T, sim_exp = F)
 }
 \arguments{
 \item{opt}{Simulation scenario option: 1 for no modification, 2 for opposite effects, 3 for an effect in one group, and 4 for a scaled effect between groups}
@@ -14,6 +14,8 @@ SimData2(opt = 1, SNR = 10, bin_mod = 0, mod_DGM = T)
 \item{bin_mod}{0 for group 1, 1 for group 2}
 
 \item{mod_DGM}{indicator for including modifier in data generating mechanism}
+
+\item{sim_exp}{indicator for using simulated exposure values and covariates. Not recommended for simulation}
 }
 \description{
 Simulate predictor, covariate, and continuous outcome data
