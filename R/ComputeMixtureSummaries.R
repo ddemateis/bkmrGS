@@ -76,21 +76,15 @@ OverallRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
       modifier <- fit$modifier #added by DD
   }
   
-  kernel.method <- fit$kernel.method
-  if(kernel.method == "one"){
-    kern_modifier <- NULL
-  }else if (kernel.method == "two"){
-    kern_modifier <- modifier
-  }
-  
   #get the quantiles of the exposures for the first point of comparison specified by q.fixed
-  point1 <- apply(Z[,1:(ncol(Z))], 2, quantile, q.fixed)
+  point1 <- apply(Z, 2, quantile, q.fixed)
   point1 <- c(point1, m.fixed) #add the modifier value, 0 or 1 #added by DD
+  
   if (method %in% c("approx", "exact")) {
+    
     preds.fun <- function(znew) {
-      # Z <- cbind(Z, modifier) #added by DD
-      # X <- cbind(X, modifier) #added by DD
-      if(!is.null(fit$modifier)){
+      
+      if(!is.null(fit$modifier)){ #if there's a modifier, create mod_new and remove from znew
         mod_new <- znew[, ncol(znew)]
         znew <- znew[,1:(ncol(znew) - 1)]
       }else{
@@ -98,15 +92,15 @@ OverallRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
         znew <- znew
       }
     
-        ComputePostmeanHnew(fit = fit,
-                            y = y,
-                            Z = Z,
-                            X = X,
-                            Znew = znew,
-                            mod_new = mod_new,
-                            sel = sel,
-                            method = method,
-                            modifier = kern_modifier)
+      ComputePostmeanHnew(fit = fit,
+                          y = y,
+                          Z = Z,
+                          X = X,
+                          modifier = modifier,
+                          Znew = znew,
+                          mod_new = mod_new,
+                          sel = sel,
+                          method = method)
       
       }
     riskSummary <- riskSummary.approx
@@ -116,14 +110,16 @@ OverallRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
   
   tmp_fn <- function(quant) { #added by DD
     riskSummary(point1 = point1, #added by DD
-                point2 = c(apply(Z[,1:(ncol(Z))], 2, quantile, quant), m.fixed), #added by DD
+                point2 = c(apply(Z, 2, quantile, quant), m.fixed), #added by DD
                 preds.fun = preds.fun) #added by DD
   }
   
+  #for each quantile in qs, call call riskSummary function
   risks.overall <- t(sapply(qs, tmp_fn))
   risks.overall <- data.frame(quantile = qs, risks.overall)
 }
 
+#used in SingVarRiskSummaries() below
 #Compare estimated \code{h} function when a single variable (or a set of variables) is at the 75th versus 25th percentile, when all of the other variables are fixed at a particular percentile
 VarRiskSummary <- function (whichz = 1, fit, y = NULL, Z = NULL, X = NULL,
                             modifier = NULL, qs.diff = c(0.25, 0.75), 
@@ -141,23 +137,17 @@ VarRiskSummary <- function (whichz = 1, fit, y = NULL, Z = NULL, X = NULL,
       modifier <- fit$modifier
   }
   
-  kernel.method <- fit$kernel.method
-  if(kernel.method == "one"){
-    kern_modifier <- NULL
-  }else if (kernel.method == "two"){
-    kern_modifier <- modifier
-  }
-  
-  point2 <- point1 <- c(apply(Z[,1:(ncol(Z))], 2, quantile, q.fixed), m.fixed)
+  point2 <- point1 <- c(apply(Z, 2, quantile, q.fixed), m.fixed) #get exposures at fixed quantile q.fixed, along with the fixed modifier value
   point2[whichz] <- apply(Z[, whichz, drop = FALSE], 2, quantile, 
-                          qs.diff[2])
+                          qs.diff[2]) #for given exposure whichz, change that exposure to the larger quantile in the difference, qs.diff[2]
   point1[whichz] <- apply(Z[, whichz, drop = FALSE], 2, quantile, 
-                          qs.diff[1])
+                          qs.diff[1]) #for given exposure whichz, change that exposure to the larger quantile in the difference, qs.diff[1]
+  
   if (method %in% c("approx", "exact")) {
+    
     preds.fun <- function(znew){
-      # Z <- cbind(Z, modifier)
-      # X <- cbind(X, modifier)
-      if(!is.null(fit$modifier)){
+      
+      if(!is.null(fit$modifier)){#if there's a modifier, create mod_new and remove from znew
         mod_new <- znew[, ncol(znew)]
         znew <- znew[,1:(ncol(znew) - 1)]
       }else{
@@ -167,12 +157,12 @@ VarRiskSummary <- function (whichz = 1, fit, y = NULL, Z = NULL, X = NULL,
       ComputePostmeanHnew(fit = fit, 
                           y = y, 
                           Z = Z, 
-                          X = X, 
+                          X = X,
+                          modifier = modifier, 
                           Znew = znew, 
                           mod_new = mod_new,
                           sel = sel, 
-                          method = method,
-                          modifier = kern_modifier)
+                          method = method)
       }
     riskSummary <- riskSummary.approx
   }
@@ -231,31 +221,32 @@ SingVarRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
       Z <- fit$Z
     if (is.null(X)) 
       X <- fit$X
-    if(is.null(modifier)) #added by DD
-      modifier <- fit$modifier #added by DD
-  }
-  
-  kernel.method <- fit$kernel.method
-  if(kernel.method == "one"){
-    kern_modifier <- NULL
-  }else if (kernel.method == "two"){
-    kern_modifier <- modifier
+    if(is.null(modifier)) 
+      modifier <- fit$modifier 
   }
   
   if (is.null(z.names)) 
     z.names <- paste0("z", 1:ncol(Z))
   df <- dplyr::tibble()
-  for (i in seq_along(q.fixed)) {
-    for (j in seq_along(which.z)) {
-      risk <- VarRiskSummary(whichz = which.z[j], fit = fit, 
-                             y = y, Z = Z, X = X, qs.diff = qs.diff, 
-                             q.fixed = q.fixed[i], method = method, 
-                             m.fixed = m.fixed, sel = sel) #added by DD
+  
+  for (i in seq_along(q.fixed)) { #for each quantile (for fixing other exposures) in q.fixed
+    for (j in seq_along(which.z)) { #for each exposure in which.z
+      risk <- VarRiskSummary(whichz = which.z[j], 
+                             fit = fit, 
+                             y = y, 
+                             Z = Z, 
+                             X = X, 
+                             qs.diff = qs.diff, 
+                             q.fixed = q.fixed[i], 
+                             method = method, 
+                             m.fixed = m.fixed, 
+                             sel = sel) 
       df0 <- dplyr::tibble(q.fixed = q.fixed[i], variable = z.names[j], 
                            est = risk["est"], sd = risk["sd"])
       df <- dplyr::bind_rows(df, df0)
     }
   }
+  
   df <- dplyr::mutate_at(df, "variable", function(x) factor(x, 
                                                             levels = z.names[which.z]))
   df <- dplyr::mutate_at(df, "q.fixed", function(x) as.factor(x))
