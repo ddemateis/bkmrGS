@@ -91,7 +91,7 @@ ComputePostmeanHnew.approx <- function(fit, y = NULL, Z = NULL, X = NULL, modifi
   
   Kpart <- makeKpart(r, Z)
   K <- exp(-Kpart)
-  if(!is.null(modifier)){
+  if(kernel.method == "two"){
     zero_idx <- outer((modifier+1), (modifier+1), "*")
     K[zero_idx == 2] <- 0
   }
@@ -106,7 +106,7 @@ ComputePostmeanHnew.approx <- function(fit, y = NULL, Z = NULL, X = NULL, modifi
     nall <- n0 + n1
     Kpartall <- makeKpart(r, rbind(Z, Znew))
     Kmat <- exp(-Kpartall)
-    if(!is.null(modifier)){
+    if(kernel.method == "two"){
       zero_idx <- outer((modifier+1), (modifier+1), "*")
       Kmat[zero_idx == 2] <- 0
     }
@@ -201,7 +201,7 @@ ComputePostmeanHnew.exact <- function(fit, y = NULL, Z = NULL, X = NULL, modifie
     
     Kpart <- makeKpart(r, Z)
     K <- exp(-Kpart)
-    if(!is.null(modifier)){
+    if(kernel.method == "two"){
       zero_idx <- outer((modifier+1), (modifier+1), "*")
       K[zero_idx == 2] <- 0
     }
@@ -222,7 +222,7 @@ ComputePostmeanHnew.exact <- function(fit, y = NULL, Z = NULL, X = NULL, modifie
       nall <- n0 + n1
       Kpartall <- makeKpart(r, rbind(Z, Znew))
       Kmat <- exp(-Kpartall)
-      if(!is.null(modifier)){
+      if(kernel.method == "two"){
         zero_idx <- outer((modifier+1), (modifier+1), "*")
         Kpartall[zero_idx == 2] <- 0
       }
