@@ -280,6 +280,10 @@ kmbayes <- function(y, Z, X = NULL,
   }
   
   ## components if model selection is being done
+  if(modtest & is.null(modifier) | modtest & kernel.method == "two"){
+    warning("Cannot perform selection on modifier. Setting modtest to FALSE.")
+    modtest <- FALSE
+  }
   #if varsel is not set to TRUE but modtest is, then set varsel to TRUE to perform selection on the modifier
   if(!varsel & modtest){ #added by DD
     varsel <- T #added by DD
