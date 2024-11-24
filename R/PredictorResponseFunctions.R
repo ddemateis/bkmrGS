@@ -1,4 +1,4 @@
-PredictorResponseUnivarVar <- function(whichz = 1, fit, y, Z, X, modifier, method = "approx", ngrid = 50, q.fixed = 0.5, sel = NULL, min.plot.dist = Inf, center = TRUE, z.names = colnames(Z), ...) {
+PredictorResponseUnivarVar <- function(whichz = 1, fit, y, Z, X, modifier, method = "approx", ngrid = 50, q.fixed = 0.5, sel = NULL, min.plot.dist = Inf, center = TRUE, z.names = colnames(Z), which.mod = NULL, ...) {
 
     if (ncol(Z) < 2) stop("requires there to be at least 2 predictor variables")
 
@@ -15,7 +15,21 @@ PredictorResponseUnivarVar <- function(whichz = 1, fit, y, Z, X, modifier, metho
     newz.grid <- expand.grid(z.all)
     colnames(newz.grid) <- colnames(Z)[ord]
     newz.grid <- newz.grid[,colnames(Z)]
-
+    
+    if(!is.null(which.mod)){
+      mod_new <- rep(which.mod, each = nrow(newz.grid))
+      if(length(which.mod) > 1){
+        newz.grid_tmp <- newz.grid
+        z1_tmp <- z1
+        for(i in 2:length(which.mod)){
+          newz.grid <- rbind(newz.grid, newz.grid_tmp)
+          z1 <- c(z1, z1_tmp)
+        }
+      }
+    }else{
+      mod_new = NULL
+    }
+    
     if (!is.null(min.plot.dist)) {
         mindists <- rep(NA,nrow(newz.grid))
         for (i in seq_along(mindists)) {
@@ -25,10 +39,24 @@ PredictorResponseUnivarVar <- function(whichz = 1, fit, y, Z, X, modifier, metho
         }
     }
 
-    if (method %in% c("approx", "exact")) {
-      preds <- ComputePostmeanHnew(fit = fit, y = y, Z = Z, X = X, modifier = modifier, Znew = newz.grid, sel = sel, method = method)
-      preds.plot <- preds$postmean
-      se.plot <- sqrt(diag(preds$postvar))
+    if (method %in% c("approx", "exact", "fullpost")) {
+      if(method == "fullpost"){
+        preds <- SamplePred(fit = fit,
+                            y = y,
+                            Z = Z, 
+                            X = X, 
+                            modifier = modifier,
+                            Znew = newz.grid, 
+                            mod_new = mod_new, 
+                            sel = sel)
+        preds.plot <- colMeans(preds)
+        se.plot <- apply(preds, 2, sd)
+      }else{
+        preds <- ComputePostmeanHnew(fit = fit, y = y, Z = Z, X = X, modifier = modifier, Znew = newz.grid, mod_new = mod_new, sel = sel, method = method)
+        preds.plot <- preds$postmean
+        se.plot <- sqrt(diag(preds$postvar))
+      }
+      
     } else {
       stop("method must be one of c('approx', 'exact')")
     }
@@ -37,8 +65,14 @@ PredictorResponseUnivarVar <- function(whichz = 1, fit, y, Z, X, modifier, metho
         preds.plot[mindists > min.plot.dist] <- NA
         se.plot[mindists > min.plot.dist] <- NA
     }
-
-    res <- dplyr::tibble(z = z1, est = preds.plot, se = se.plot)
+    
+    #needs to be adjusted for modifier
+    if(is.null(mod_new)){
+      res <- dplyr::tibble(z = z1, est = preds.plot, se = se.plot)
+    }else{
+      res <- dplyr::tibble(z = z1, modifier = mod_new, est = preds.plot, se = se.plot)
+    }
+    
 }
 
 #' Plot univariate predictor-response function on a new grid of points
@@ -50,6 +84,7 @@ PredictorResponseUnivarVar <- function(whichz = 1, fit, y, Z, X, modifier, metho
 #' @inheritParams SingVarRiskSummaries
 #' 
 #' @param which.z vector identifying which predictors (columns of \code{Z}) should be plotted
+#' @param which.mod vector of modifier values, either \code{c(0), c(1)}, or \code{c(0,1)}.
 #' @param ngrid number of grid points to cover the range of each predictor (column in \code{Z})
 #' @param min.plot.dist specifies a minimum distance that a new grid point needs to be from an observed data point in order to compute the prediction; points further than this will not be computed
 #' @param center flag for whether to scale the exposure-response function to have mean zero
@@ -73,7 +108,12 @@ PredictorResponseUnivarVar <- function(whichz = 1, fit, y, Z, X, modifier, metho
 #' set.seed(111)
 #' fitkm <- kmbayes(y = y, Z = Z, X = X, iter = 100, verbose = FALSE, varsel = TRUE)
 #' pred.resp.univar <- PredictorResponseUnivar(fit = fitkm)
-PredictorResponseUnivar <- function(fit, y = NULL, Z = NULL, X = NULL, modifier = NULL, which.z = 1:ncol(Z), method = "approx", ngrid = 50, q.fixed = 0.5, sel = NULL, min.plot.dist = Inf, center = TRUE, z.names = colnames(Z), ...) {
+PredictorResponseUnivar <- function(fit, y = NULL, Z = NULL, X = NULL, 
+                                    modifier = NULL, which.z = 1:ncol(Z),
+                                    which.mod = NULL, method = "approx",
+                                    ngrid = 50, q.fixed = 0.5, sel = NULL, 
+                                    min.plot.dist = Inf, center = TRUE, 
+                                    z.names = colnames(Z), ...) {
   
   if (inherits(fit, "bkmrfit")) {
     y <- fit$y
@@ -82,8 +122,8 @@ PredictorResponseUnivar <- function(fit, y = NULL, Z = NULL, X = NULL, modifier 
     modifier <- fit$modifier
   }
   
-  if(!is.null(modifier)){
-    stop("Not supported yet for modification")
+  if(!is.null(modifier) & is.null(which.mod)){
+    which.mod <- c(0,1)
   }
   
   kernel.method <- fit$kernel.method
@@ -99,11 +139,16 @@ PredictorResponseUnivar <- function(fit, y = NULL, Z = NULL, X = NULL, modifier 
   
   df <- dplyr::tibble()
   for(i in which.z) {
-    res <- PredictorResponseUnivarVar(whichz = i, fit = fit, y = y, Z = Z, X = X, modifier = modifier, method = method, ngrid = ngrid, q.fixed = q.fixed, sel = sel, min.plot.dist = min.plot.dist, center = center, z.names = z.names, ...)
+    res <- PredictorResponseUnivarVar(whichz = i, fit = fit, y = y, Z = Z, X = X, modifier = modifier, method = method, ngrid = ngrid, q.fixed = q.fixed, sel = sel, min.plot.dist = min.plot.dist, center = center, z.names = z.names, which.mod = which.mod,...)
     #df0 <- dplyr::mutate(res, variable = z.names[i]) %>%
     #  dplyr::select_(~variable, ~z, ~est, ~se)
-    df0 <- dplyr::mutate(res, variable = z.names[i]) %>%
-      dplyr::select_at(c("variable", "z", "est", "se"))
+    if(is.null(modifier)){
+      df0 <- dplyr::mutate(res, variable = z.names[i]) %>%
+        dplyr::select_at(c("variable", "z", "est", "se"))
+    }else{
+      df0 <- dplyr::mutate(res, variable = z.names[i]) %>%
+        dplyr::select_at(c("variable", "z", "modifier", "est", "se"))
+    }
     df <- dplyr::bind_rows(df, df0)
   }
   df$variable <- factor(df$variable, levels = z.names[which.z])
@@ -144,7 +189,13 @@ PredictorResponseUnivar <- function(fit, y = NULL, Z = NULL, X = NULL, modifier 
 #' ## Obtain predicted value on new grid of points
 #' ## Using only a 10-by-10 point grid to make example run quickly
 #' pred.resp.bivar12 <- PredictorResponseBivarPair(fit = fitkm, min.plot.dist = 1, ngrid = 10)
-PredictorResponseBivarPair <- function(fit, y = NULL, Z = NULL, X = NULL, modifier = NULL, whichz1 = 1, whichz2 = 2, whichz3 = NULL, method = "approx", prob = 0.5, q.fixed = 0.5, sel = NULL, ngrid = 50, min.plot.dist = 0.5, center = TRUE, ...) {
+PredictorResponseBivarPair <- function(fit, y = NULL, Z = NULL, X = NULL,
+                                       modifier = NULL, whichz1 = 1, 
+                                       whichz2 = 2, whichz3 = NULL, 
+                                       method = "approx", prob = 0.5, 
+                                       q.fixed = 0.5, mod.fixed = NULL,
+                                       sel = NULL, ngrid = 50, 
+                                       min.plot.dist = 0.5, center = TRUE, ...) {
   
   #set variables if NULL
   if (inherits(fit, "bkmrfit")) {
@@ -187,9 +238,13 @@ PredictorResponseBivarPair <- function(fit, y = NULL, Z = NULL, X = NULL, modifi
             mindists[k] <- min(dists)
         }
     }
+    
+    if(!is.null(modifier)){
+      mod_new <- rep(mod.fixed, nrow(newz.grid))
+    }
 
     if (method %in% c("approx", "exact")) {
-      preds <- ComputePostmeanHnew(fit = fit, y = y, Z = Z, X = X, modifier = modifier, Znew = newz.grid, sel = sel, method = method)
+      preds <- ComputePostmeanHnew(fit = fit, y = y, Z = Z, X = X, modifier = modifier, Znew = newz.grid, mod_new = mod_new, sel = sel, method = method)
       preds.plot <- preds$postmean
       se.plot <- sqrt(diag(preds$postvar))
     } else {
@@ -240,7 +295,12 @@ PredictorResponseBivarPair <- function(fit, y = NULL, Z = NULL, X = NULL, modifi
 #' ## Using only a 10-by-10 point grid to make example run quickly
 #' pred.resp.bivar <- PredictorResponseBivar(fit = fitkm, min.plot.dist = 1, ngrid = 10)
 #' 
-PredictorResponseBivar <- function(fit, y = NULL, Z = NULL, X = NULL, modifier = NULL, z.pairs = NULL, method = "approx", ngrid = 50, q.fixed = 0.5, sel = NULL, min.plot.dist = 0.5, center = TRUE, z.names = colnames(Z), verbose = TRUE, ...) {
+PredictorResponseBivar <- function(fit, y = NULL, Z = NULL, X = NULL, 
+                                   modifier = NULL, z.pairs = NULL, 
+                                   method = "approx", ngrid = 50, 
+                                   q.fixed = 0.5, sel = NULL, mod.fixed = NULL,
+                                   min.plot.dist = 0.5, center = TRUE, 
+                                   z.names = colnames(Z), verbose = TRUE, ...) {
   
   if (inherits(fit, "bkmrfit")) {
     if (is.null(y)) y <- fit$y
@@ -249,15 +309,15 @@ PredictorResponseBivar <- function(fit, y = NULL, Z = NULL, X = NULL, modifier =
     if (is.null(modifier)) modifier <- fit$modifier
   }
   
-  if(!is.null(modifier)){
-    stop("Not yet supported for modification")
-  }
-  
   kernel.method <- fit$kernel.method
   if(kernel.method == "one"){
     kern_modifier <- NULL
   }else if(kernel.method == "two"){
     kern_modifier <- modifier
+  }
+  
+  if(!is.null(modifier) & is.null(mod.fixed)){
+    stop("Modification detected. Must provide modifier value to fix using the 'mod.fixed' argument.")
   }
   
   if (is.null(z.names)) {
@@ -292,11 +352,17 @@ PredictorResponseBivar <- function(fit, y = NULL, Z = NULL, X = NULL, modifier =
     }
     if(compute) {
       if(verbose) message("Pair ", i, " out of ", nrow(z.pairs))
-      res <- PredictorResponseBivarPair(fit = fit, y = y, Z = Z, X = X, modifier = modifier, whichz1 = whichz1, whichz2 = whichz2, method = method, ngrid = ngrid, q.fixed = q.fixed, sel = sel, min.plot.dist = min.plot.dist, center = center, z.names = z.names, ...)
+      res <- PredictorResponseBivarPair(fit = fit, y = y, Z = Z, X = X, 
+                                        modifier = modifier, whichz1 = whichz1, 
+                                        whichz2 = whichz2, method = method, 
+                                        ngrid = ngrid, q.fixed = q.fixed, 
+                                        mod.fixed = mod.fixed, sel = sel, 
+                                        min.plot.dist = min.plot.dist, 
+                                        center = center, z.names = z.names, ...)
       df0 <- res
       df0$variable1 <- z.name1
       df0$variable2 <- z.name2
-      df0 %<>%
+      df0 %>%
         #dplyr::select_(~variable1, ~variable2, ~z1, ~z2, ~est, ~se)
         dplyr::select_at(c("variable1", "variable2", "z1", "z2", "est", "se"))
       df <- dplyr::bind_rows(df, df0)
@@ -340,7 +406,9 @@ PredictorResponseBivar <- function(fit, y = NULL, Z = NULL, X = NULL, modifier =
 #' pred.resp.bivar <- PredictorResponseBivar(fit = fitkm, min.plot.dist = 1, ngrid = 10)
 #' pred.resp.bivar.levels <- PredictorResponseBivarLevels(pred.resp.df = pred.resp.bivar, 
 #' Z = Z, qs = c(0.1, 0.5, 0.9))
-PredictorResponseBivarLevels <- function(pred.resp.df, Z = NULL, qs = c(0.25, 0.5, 0.75), both_pairs = TRUE, z.names = NULL) {
+PredictorResponseBivarLevels <- function(pred.resp.df, Z = NULL, 
+                                         qs = c(0.25, 0.5, 0.75), 
+                                         both_pairs = TRUE, z.names = NULL) {
   #var.pairs <- dplyr::distinct(dplyr::select_(pred.resp.df, ~variable1, ~variable2))
   var.pairs <- dplyr::distinct(dplyr::select_at(pred.resp.df, c("variable1", "variable2")))
   if (both_pairs) {
