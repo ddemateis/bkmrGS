@@ -476,7 +476,7 @@ kmbayes <- function(y, Z, X = NULL,
         }
       } else if (rmethod == "varying") { ## allow a different r_m
         for (whichr in comp) {
-          varcomps <- r.update(r = rSim, whichcomp = whichr, delta = chain$delta[s - 1,], lambda = chain$lambda[s,], y = ycont, X = X, beta = chain$beta[s,], sigsq.eps = chain$sigsq.eps[s], Vcomps = Vcomps, Z = Z, data.comps = data.comps, control.params = control.params, rprior.logdens = rprior.logdens, rprop.gen1 = rprop.gen1, rprop.logdens1 = rprop.logdens1, rprop.gen2 = rprop.gen2, rprop.logdens2 = rprop.logdens2, rprop.gen = rprop.gen, rprop.logdens = rprop.logdens)
+          varcomps <- r.update(r = rSim, whichcomp = whichr, delta = chain$delta[s - 1,], lambda = chain$lambda[s,], y = ycont, X = X, beta = chain$beta[s,], sigsq.eps = chain$sigsq.eps[s], Vcomps = Vcomps, Z = Z, data.comps = data.comps, control.params = control.params, rprior.logdens = rprior.logdens, rprop.gen1 = rprop.gen1, rprop.logdens1 = rprop.logdens1, rprop.gen2 = rprop.gen2, rprop.logdens2 = rprop.logdens2, rprop.gen = rprop.gen, rprop.logdens = rprop.logdens, modifier = kern_modifier)
           rSim <- varcomps$r
           if (varcomps$acc) {
             Vcomps <- varcomps$Vcomps
@@ -497,7 +497,7 @@ kmbayes <- function(y, Z, X = NULL,
       }
     }
     chain$r[s,] <- rSim
-    
+  
     ###################################################
     ## generate posterior sample of h(z) from its posterior P(h | beta, sigsq.eps, lambda, r, y)
     
