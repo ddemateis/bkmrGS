@@ -37,7 +37,7 @@ SingVarIntSummaries(
 
 \item{qs.fixed}{vector indicating the two quantiles at which to fix all of the remaining exposures in \code{Z}}
 
-\item{mod.diff}{vector of two modifier values at which to compute the single-predictor risk summary (only for models with modification). Either \code{c(0,1)}, \code{c(0,0,)}, or \code{c(1,1)}.}
+\item{mod.diff}{vector of two modifier values at which to compute the single-predictor risk summary (only for models with modification.) For single exposure interactive effects in the same group, use \code{c(0,0)} or \code{c(1,1)}. For single-exposure interaction between groups, use \code{c(0,1)} and \code{qs.fixed} must be a vector of two of the same values.}
 
 \item{method}{method for obtaining posterior summaries at a vector of new points. Options are "approx" and "exact"; defaults to "approx", which is faster particularly for large datasets; see details}
 
@@ -51,7 +51,7 @@ SingVarIntSummaries(
 a data frame containing the (posterior mean) estimate and posterior standard deviation of the single-predictor risk measures
 }
 \description{
-Compare the single-predictor health risks when all of the other predictors in Z are fixed to their a specific quantile to when all of the other predictors in Z are fixed to their a second specific quantile.
+Compare the single-predictor health risks when all of the other predictors in Z are fixed to their a specific quantile to when all of the other predictors in Z are fixed to their a second specific quantile. For interactive overall effect, set \code{mod.diff = c(0,1)}, and make \code{qs.diff} and \code{qs.fixed} the same vector.
 }
 \details{
 \itemize{

@@ -15,6 +15,7 @@ PredictorResponseBivar(
   ngrid = 50,
   q.fixed = 0.5,
   sel = NULL,
+  mod.fixed = NULL,
   min.plot.dist = 0.5,
   center = TRUE,
   z.names = colnames(Z),

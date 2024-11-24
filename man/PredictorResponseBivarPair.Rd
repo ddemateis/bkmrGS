@@ -16,6 +16,7 @@ PredictorResponseBivarPair(
   method = "approx",
   prob = 0.5,
   q.fixed = 0.5,
+  mod.fixed = NULL,
   sel = NULL,
   ngrid = 50,
   min.plot.dist = 0.5,

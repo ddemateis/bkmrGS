@@ -11,6 +11,7 @@ PredictorResponseUnivar(
   X = NULL,
   modifier = NULL,
   which.z = 1:ncol(Z),
+  which.mod = NULL,
   method = "approx",
   ngrid = 50,
   q.fixed = 0.5,
@@ -33,6 +34,8 @@ PredictorResponseUnivar(
 \item{modifier}{a vector of binary values of length \code{n} that may modify the exposure-response associations.}
 
 \item{which.z}{vector identifying which predictors (columns of \code{Z}) should be plotted}
+
+\item{which.mod}{vector of modifier values, either \code{c(0), c(1)}, or \code{c(0,1)}.}
 
 \item{method}{method for obtaining posterior summaries at a vector of new points. Options are "approx" and "exact"; defaults to "approx", which is faster particularly for large datasets; see details}
 
