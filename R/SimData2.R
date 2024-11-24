@@ -1,13 +1,21 @@
 HFun <- function (z, opt = 1){ 
   
+  if(length(z) == 2){
+    z_sum <- (z[1] + z[2] + 1/2 * z[1] * z[2])
+  }else if(length(z == 3)){
+    z_sum <- (z[1] + z[2] + z[3] + 1/2 * z[1] * z[2] * z[3])
+  }
+  
   if(opt==1){
-   h <- 4*plogis(1/4 * (z[1] + z[2] + 1/2 * z[1] * z[2]), 0, 0.3)
+   h <- 4*plogis(1/4 * z_sum, 0, 0.3)
   }else if(opt == 2){
-   h <- 4 - 4 * plogis(1/4 * (z[1] + z[2] + 1/2 * z[1] * z[2]), 0, 0.3)
+   h <- 4 - 4 * plogis(1/4 * z_sum, 0, 0.3)
   }else if(opt == 3){
     h <- 0
   }else if(opt == 4){
-    h <- 2*plogis(1/4 * (z[1] + z[2] + 1/2 * z[1] * z[2]), 0, 0.3)
+    h <- 2*plogis(1/4 * z_sum, 0, 0.3)
+  }else if(opt == 5){
+    h <- plogis(1/4 * z_sum, 0, 0.3)
   }
   
   return(h)
@@ -23,11 +31,13 @@ HFun <- function (z, opt = 1){
 #' @inheritParams kmbayes
 #' @param opt Simulation scenario option: 1 for no modification, 2 for opposite effects, 3 for an effect in one group, and 4 for a scaled effect between groups
 #' @param SNR signal-to-noise ratio
+#' @param M number of exposures (1 to 3 supported)
 #' @param bin_mod 0 for group 1, 1 for group 2
 #' @param mod_DGM indicator for including modifier in data generating mechanism
 #' @param sim_exp indicator for using simulated exposure values and covariates. Not recommended for simulation
 SimData2 <- function (opt = 1,
                       SNR = 10,
+                      M = 2,
                       bin_mod = 0,
                       mod_DGM = T,
                       sim_exp = F){
@@ -44,11 +54,19 @@ SimData2 <- function (opt = 1,
   n <- nrow(dta)
   
   #generate exposures
-  M <- 2
   if(sim_exp){
     Z <- matrix(rnorm(n * M), n, M)
   }else{
-    Z <- cbind(scale(dta$pb_ln), scale(dta$mn_ln))
+    if(M==1){
+      Z <- scale(dta$pb_ln)
+    }else if(M==2){
+      Z <- cbind(scale(dta$pb_ln), scale(dta$mn_ln))
+    }else if(M==3){
+      Z <- cbind(scale(dta$pb_ln), scale(dta$mn_ln), scale(dta$as_ln))
+    }else{
+      stop("M not supported.")
+    }
+    
   }
   colnames(Z) <- paste0("z", 1:M)
   
