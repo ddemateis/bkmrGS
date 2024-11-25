@@ -42,11 +42,12 @@ PredictorResponseUnivarVar <- function(whichz = 1, fit, y, Z, X, modifier, metho
     if (method %in% c("approx", "exact", "fullpost")) {
       if(method == "fullpost"){
         preds <- SamplePred(fit = fit,
-                            y = y,
+                            y = y, 
                             Z = Z, 
                             X = X, 
                             modifier = modifier,
                             Znew = newz.grid, 
+                            Xnew = matrix(0, nrow=nrow(newz.grid), ncol=ncol(X)),
                             mod_new = mod_new, 
                             sel = sel)
         preds.plot <- colMeans(preds)
@@ -124,13 +125,6 @@ PredictorResponseUnivar <- function(fit, y = NULL, Z = NULL, X = NULL,
   
   if(!is.null(modifier) & is.null(which.mod)){
     which.mod <- c(0,1)
-  }
-  
-  kernel.method <- fit$kernel.method
-  if(kernel.method == "one"){
-    kern_modifier <- NULL
-  }else if(kernel.method == "two"){
-    kern_modifier <- modifier
   }
 
   if (is.null(z.names)) {
