@@ -46,6 +46,18 @@ SamplePred <- function(fit, Znew = NULL, Xnew = NULL, mod_new = NULL,
   }
   if (length(type) > 1) type <- type[1]
   
+  #convert modifier to factor and construct contrast matrix
+  if(!is.null(modifier)){
+    orig_modifier <- modifier
+    modifier <- as.factor(modifier)
+    modifier <- as.matrix(model.matrix(~modifier)[,-1])
+    if(!is.null(mod_new)){
+      orig_mod_new <- mod_new
+      mod_new <- factor(mod_new, levels = levels(factor(orig_modifier)))
+      mod_new <- matrix(model.matrix(~mod_new)[,-1], ncol = ncol(modifier))
+    }
+  }
+  
   kernel.method <- fit$kernel.method
   if(kernel.method == "one"){
     Z <- cbind(Z, modifier)
@@ -53,7 +65,6 @@ SamplePred <- function(fit, Znew = NULL, Xnew = NULL, mod_new = NULL,
     Z <- Z
   }
 
-  
   if (!is.null(Znew)) { #what is Znew is NULL?
     if (is.null(dim(Znew))) Znew <- matrix(Znew, nrow = 1)
     if (inherits(Znew, "data.frame")) Znew <- data.matrix(Znew)

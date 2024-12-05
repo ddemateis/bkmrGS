@@ -52,13 +52,28 @@ ComputePostmeanHnew <- function(fit, y = NULL, Z = NULL, X = NULL, modifier = NU
 #' @inheritParams kmbayes
 #' @inheritParams ExtractEsts
 #' @noRd
-ComputePostmeanHnew.approx <- function(fit, y = NULL, Z = NULL, X = NULL, modifier = NULL, Znew = NULL,  mod_new = NULL, sel = NULL) {
+ComputePostmeanHnew.approx <- function(fit, y = NULL, Z = NULL, 
+                                       X = NULL, modifier = NULL,
+                                       Znew = NULL,  mod_new = NULL,
+                                       sel = NULL) {
   
   if (inherits(fit, "bkmrfit")) {
     if (is.null(y)) y <- fit$y
     if (is.null(Z)) Z <- fit$Z
     if (is.null(X)) X <- fit$X
     if (is.null(modifier)) modifier <- fit$modifier
+  }
+  
+  #convert modifier to factor and construct contrast matrix
+  if(!is.null(modifier)){
+    orig_modifier <- modifier
+    modifier <- as.factor(modifier)
+    modifier <- as.matrix(model.matrix(~modifier)[,-1])
+    if(!is.null(mod_new)){
+      orig_mod_new <- mod_new
+      mod_new <- factor(mod_new, levels = levels(factor(orig_modifier)))
+      mod_new <- as.matrix(model.matrix(~mod_new)[,-1])
+    }
   }
   
   kernel.method <- fit$kernel.method
@@ -92,8 +107,9 @@ ComputePostmeanHnew.approx <- function(fit, y = NULL, Z = NULL, X = NULL, modifi
   Kpart <- makeKpart(r, Z)
   K <- exp(-Kpart)
   if(kernel.method == "two"){
-    zero_idx <- outer((modifier+1), (modifier+1), "*")
-    K[zero_idx == 2] <- 0
+    K <- block_kernel(mod_vec1 = modifier,
+                      mod_vec2 = modifier,
+                      K = K)
   }
   V <- diag(1, nrow(Z), nrow(Z)) + lambda[1]*K
   cholV <- chol(V)
@@ -107,8 +123,9 @@ ComputePostmeanHnew.approx <- function(fit, y = NULL, Z = NULL, X = NULL, modifi
     Kpartall <- makeKpart(r, rbind(Z, Znew))
     Kmat <- exp(-Kpartall)
     if(kernel.method == "two"){
-      zero_idx <- outer((modifier+1), (modifier+1), "*")
-      Kmat[zero_idx == 2] <- 0
+      Kmat <- block_kernel(mod_vec1 = modifier,
+                           mod_vec2 = modifier,
+                           K = Kmat)
     }
     Kmat0 <- Kmat[1:n0,1:n0 ,drop=FALSE]
     Kmat1 <- Kmat[(n0+1):nall,(n0+1):nall ,drop=FALSE]
@@ -145,6 +162,18 @@ ComputePostmeanHnew.exact <- function(fit, y = NULL, Z = NULL, X = NULL, modifie
     if (is.null(Z)) Z <- fit$Z
     if (is.null(X)) X <- fit$X
     if (is.null(modifier)) modifier <- fit$modifier
+  }
+  
+  #convert modifier to factor and construct contrast matrix
+  if(!is.null(modifier)){
+    orig_modifier <- modifier
+    modifier <- as.factor(modifier)
+    modifier <- as.matrix(model.matrix(~modifier)[,-1])
+    if(!is.null(mod_new)){
+      orig_mod_new <- mod_new
+      mod_new <- factor(mod_new, levels = levels(factor(orig_modifier)))
+      mod_new <- as.matrix(model.matrix(~mod_new)[,-1])
+    }
   }
   
   kernel.method <- fit$kernel.method
@@ -202,8 +231,9 @@ ComputePostmeanHnew.exact <- function(fit, y = NULL, Z = NULL, X = NULL, modifie
     Kpart <- makeKpart(r, Z)
     K <- exp(-Kpart)
     if(kernel.method == "two"){
-      zero_idx <- outer((modifier+1), (modifier+1), "*")
-      K[zero_idx == 2] <- 0
+      K <- block_kernel(mod_vec1 = modifier,
+                        mod_vec2 = modifier,
+                        K = K)
     }
     Vcomps <- makeVcomps(r = r, lambda = lambda, Z = Z, data.comps = data.comps, modifier = kern_modifier)
     Vinv <- Vcomps$Vinv
@@ -223,8 +253,9 @@ ComputePostmeanHnew.exact <- function(fit, y = NULL, Z = NULL, X = NULL, modifie
       Kpartall <- makeKpart(r, rbind(Z, Znew))
       Kmat <- exp(-Kpartall)
       if(kernel.method == "two"){
-        zero_idx <- outer((modifier+1), (modifier+1), "*")
-        Kpartall[zero_idx == 2] <- 0
+        Kmat <- block_kernel(mod_vec1 = rbind(modifier, mod_new),
+                                 mod_vec2 = rbind(modifier, mod_new),
+                                 K = Kmat)
       }
       Kmat0 <- Kmat[1:n0,1:n0 ,drop=FALSE]
       Kmat1 <- Kmat[(n0+1):nall,(n0+1):nall ,drop=FALSE]

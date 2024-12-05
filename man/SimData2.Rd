@@ -4,16 +4,12 @@
 \alias{SimData2}
 \title{Simulate dataset with modifier}
 \usage{
-SimData2(opt = 1, SNR = 10, M = 2, bin_mod = 0, mod_DGM = T, sim_exp = F)
+SimData2(scenario = "none", SNR = 10, mod_DGM = T, sim_exp = F)
 }
 \arguments{
-\item{opt}{Simulation scenario option: 1 for no modification, 2 for opposite effects, 3 for an effect in one group, and 4 for a scaled effect between groups}
+\item{scenario}{Simulation scenario option: "none" for no modification between two groups, "oneGroup" for one group effect out of two groups, "scaled2" for one groups having a scaled effect of the other group with 2 exposures, "scaled3" is the same but for 3 exposures, and "multi" for one group with no effect and the other two groups having a scaled effect}
 
 \item{SNR}{signal-to-noise ratio}
-
-\item{M}{number of exposures (1 to 3 supported)}
-
-\item{bin_mod}{0 for group 1, 1 for group 2}
 
 \item{mod_DGM}{indicator for including modifier in data generating mechanism}
 

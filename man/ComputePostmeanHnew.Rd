@@ -25,7 +25,7 @@ ComputePostmeanHnew(
 
 \item{X}{an \code{n}-by-\code{K} matrix of covariate data where each row represents an observation and each column represents a covariate. Should not contain an intercept column.}
 
-\item{modifier}{a vector of binary values of length \code{n} that may modify the exposure-response associations.}
+\item{modifier}{a vector categorical values of length \code{n} that may modify the exposure-response associations. Control level ordering by using class \code{factor}, or use default level orders with any vector class.}
 
 \item{Znew}{matrix of new predictor values at which to predict new \code{h}, where each row represents a new observation. If set to NULL then will default to using the observed exposures Z.}
 

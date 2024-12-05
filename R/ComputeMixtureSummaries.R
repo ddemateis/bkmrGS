@@ -1,8 +1,11 @@
 #used in non-interactive effect functions (overall, single-exposure)
-riskSummary.approx <- function(point1, point2, preds.fun, ...) {
+riskSummary.approx <- function(point1, point2, modnew = NULL, preds.fun, ...) {
   cc <- c(-1, 1)
   newz <- rbind(point1, point2)
-  preds <- preds.fun(newz, ...)
+  if(!is.null(modnew)){
+    modnew <- matrix(rep(modnew, nrow(newz)), ncol=1)
+  }
+  preds <- preds.fun(newz, modnew, ...)
   diff <- drop(cc %*% preds$postmean) #E[AX] = A*E[X]
   diff.sd <- drop(sqrt(cc %*% preds$postvar %*% cc)) #V[AX] = A * V[X] *A'
   c(est = diff, sd = diff.sd)
@@ -85,25 +88,24 @@ OverallRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
       Z <- fit$Z
     if (is.null(X)) 
       X <- fit$X
-    if (is.null(modifier)) #added by DD
-      modifier <- fit$modifier #added by DD
+    if (is.null(modifier)) 
+      modifier <- fit$modifier   
   }
+  
+  # happens in computepostmeanhnew
+  # #convert modifier to factor and construct contrast matrix
+  # if(!is.null(modifier)){
+  #   orig_modifier <- modifier
+  #   modifier <- as.factor(modifier)
+  #   modifier <- as.matrix(model.matrix(~modifier)[,-1])
+  # }
   
   #get the quantiles of the exposures for the first point of comparison specified by q.fixed
   point1 <- apply(Z, 2, quantile, q.fixed)
-  point1 <- c(point1, m.fixed) #add the modifier value, 0 or 1 #added by DD
-  
+
   if (method %in% c("approx", "exact")) {
     
-    preds.fun <- function(znew) {
-      
-      if(!is.null(fit$modifier)){ #if there's a modifier, create mod_new and remove from znew
-        mod_new <- znew[, ncol(znew)]
-        znew <- znew[,1:(ncol(znew) - 1)]
-      }else{
-        mod_new <- NULL
-        znew <- znew
-      }
+    preds.fun <- function(znew, modnew=NULL) {
     
       ComputePostmeanHnew(fit = fit,
                           y = y,
@@ -111,7 +113,7 @@ OverallRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
                           X = X,
                           modifier = modifier,
                           Znew = znew,
-                          mod_new = mod_new,
+                          mod_new = modnew,
                           sel = sel,
                           method = method)
       
@@ -121,10 +123,11 @@ OverallRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
     stop("method must be one of c('approx', 'exact')")
   }
   
-  tmp_fn <- function(quant) { #added by DD
-    riskSummary(point1 = point1, #added by DD
-                point2 = c(apply(Z, 2, quantile, quant), m.fixed), #added by DD
-                preds.fun = preds.fun) #added by DD
+  tmp_fn <- function(quant) { 
+    riskSummary(point1 = point1, 
+                point2 = apply(Z, 2, quantile, quant),
+                modnew = m.fixed,
+                preds.fun = preds.fun) 
   }
   
   #for each quantile in qs, call call riskSummary function
@@ -150,7 +153,16 @@ VarRiskSummary <- function (whichz = 1, fit, y = NULL, Z = NULL, X = NULL,
       modifier <- fit$modifier
   }
   
-  point2 <- point1 <- c(apply(Z, 2, quantile, q.fixed), m.fixed) #get exposures at fixed quantile q.fixed, along with the fixed modifier value
+  # #convert modifier to factor and construct contrast matrix
+  # if(!is.null(modifier)){
+  #   orig_modifier <- modifier
+  #   modifier <- as.factor(modifier)
+  #   modifier <- as.matrix(model.matrix(~modifier)[,-1])
+  #   m.fixed <- factor(m.fixed, levels = levels(factor(orig_modifier)))
+  #   m.fixed <- as.matrix(model.matrix(~m.fixed)[,-1])
+  # }
+  
+  point2 <- point1 <- apply(Z, 2, quantile, q.fixed) #get exposures at fixed quantile q.fixed, along with the fixed modifier value
   point2[whichz] <- apply(Z[, whichz, drop = FALSE], 2, quantile, 
                           qs.diff[2]) #for given exposure whichz, change that exposure to the larger quantile in the difference, qs.diff[2]
   point1[whichz] <- apply(Z[, whichz, drop = FALSE], 2, quantile, 
@@ -158,22 +170,15 @@ VarRiskSummary <- function (whichz = 1, fit, y = NULL, Z = NULL, X = NULL,
   
   if (method %in% c("approx", "exact")) {
     
-    preds.fun <- function(znew){
+    preds.fun <- function(znew, modnew=NULL){
       
-      if(!is.null(fit$modifier)){#if there's a modifier, create mod_new and remove from znew
-        mod_new <- znew[, ncol(znew)]
-        znew <- znew[,1:(ncol(znew) - 1)]
-      }else{
-        mod_new <- NULL
-        znew <- znew
-      }
       ComputePostmeanHnew(fit = fit, 
                           y = y, 
                           Z = Z, 
                           X = X,
                           modifier = modifier, 
                           Znew = znew, 
-                          mod_new = mod_new,
+                          mod_new = modnew,
                           sel = sel, 
                           method = method)
       }
@@ -184,6 +189,7 @@ VarRiskSummary <- function (whichz = 1, fit, y = NULL, Z = NULL, X = NULL,
   }
   riskSummary(point1 = point1,
               point2 = point2,
+              modnew = m.fixed,
               preds.fun = preds.fun, 
               ...)
 }
@@ -238,6 +244,15 @@ SingVarRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
       modifier <- fit$modifier 
   }
   
+  # #convert modifier to factor and construct contrast matrix - not needed because happens in VarRiskSummary()
+  # if(!is.null(modifier)){
+  #   orig_modifier <- modifier
+  #   modifier <- as.factor(modifier)
+  #   modifier <- as.matrix(model.matrix(~modifier)[,-1])
+  #   m.fixed <- factor(m.fixed, levels = levels(factor(orig_modifier)))
+  #   m.fixed <- as.matrix(model.matrix(~m.fixed)[,-1])
+  # }
+  
   if(!is.null(m.fixed) & is.null(modifier)){
     stop("Cannot specify modifier values for model without modification.")
   }
@@ -284,6 +299,15 @@ SingVarIntSummary <- function(whichz = 1, fit, y = NULL, Z = NULL,
     if (is.null(X)) X <- fit$X
     if (is.null(modifier)) modifier <- fit$modifier
   }
+  
+  # #convert modifier to factor and construct contrast matrix
+  # if(!is.null(modifier)){
+  #   orig_modifier <- modifier
+  #   modifier <- as.factor(modifier)
+  #   modifier <- as.matrix(model.matrix(~modifier)[,-1])
+  #   mod.diff <- factor(mod.diff, levels = levels(factor(orig_modifier)))
+  #   mod.diff <- as.matrix(model.matrix(~mod.diff)[,-1])
+  # }
   
   #second difference: h(z_1^{qs2}, z_2^{q2}, \dots, z_M^{q2}) - h(z_1^{qs1}, z_2^{q2}, \dots, z_M^{q2})
   q.fixed <- qs.fixed[1] #first quantile to fix remaining exposures
@@ -348,14 +372,14 @@ SingVarIntSummary <- function(whichz = 1, fit, y = NULL, Z = NULL,
 
 #' Single Variable Interaction Summaries
 #' 
-#' Compare the single-predictor health risks when all of the other predictors in Z are fixed to their a specific quantile to when all of the other predictors in Z are fixed to their a second specific quantile. For interactive overall effect, set \code{mod.diff = c(0,1)}, and make \code{qs.diff} and \code{qs.fixed} the same vector. 
+#' Compare the single-predictor health risks when all of the other predictors in Z are fixed to their a specific quantile to when all of the other predictors in Z are fixed to their a second specific quantile. For interaction overall effect, set \code{mod.diff} to two separate levels of the modifier, and make \code{qs.diff} and \code{qs.fixed} the same vector. 
 #' @inheritParams kmbayes
 #' @inheritParams ExtractEsts
 #' @inheritParams SingVarRiskSummaries
 #' @inherit ComputePostmeanHnew details
 #' @param qs.diff vector indicating the two quantiles at which to compute the single-predictor risk summary
 #' @param qs.fixed vector indicating the two quantiles at which to fix all of the remaining exposures in \code{Z}
-#' @param mod.diff vector of two modifier values at which to compute the single-predictor risk summary (only for models with modification.) For single exposure interactive effects in the same group, use \code{c(0,0)} or \code{c(1,1)}. For single-exposure interaction between groups, use \code{c(0,1)} and \code{qs.fixed} must be a vector of two of the same values. 
+#' @param mod.diff vector of two modifier values at which to compute the single-predictor risk summary (only for models with modification.) 
 #' @export
 #' 
 #' @return a data frame containing the (posterior mean) estimate and posterior standard deviation of the single-predictor risk measures
@@ -389,6 +413,15 @@ SingVarIntSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
     if (is.null(modifier)) modifier <- fit$modifier
   }
   
+  #convert modifier to factor and construct contrast matrix
+  # if(!is.null(modifier)){
+  #   orig_modifier <- modifier
+  #   modifier <- as.factor(modifier)
+  #   modifier <- as.matrix(model.matrix(~modifier)[,-1])
+  #   mod.diff <- factor(mod.diff, levels = levels(factor(orig_modifier)))
+  #   mod.diff <- as.matrix(model.matrix(~mod.diff)[,-1])
+  # }
+  
   if(!is.null(mod.diff) & is.null(modifier)){
     stop("Cannot specify modifier values for model without modification.")
   }
@@ -418,7 +451,7 @@ SingVarIntSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
 #used in OverallIntSummaries() below
 OverallIntSummary <- function(whichz = 1, fit, y = NULL, Z = NULL, 
                               X = NULL, modifier = NULL, 
-                              qs = 0.25, q.fixed = 0.5,
+                              qs = 0.25, q.fixed = 0.5, mod.diff = NULL,
                               method = "approx", sel = NULL, ...) {
   
   if (inherits(fit, "bkmrfit")) {
@@ -428,14 +461,21 @@ OverallIntSummary <- function(whichz = 1, fit, y = NULL, Z = NULL,
     if (is.null(modifier)) modifier <- fit$modifier
   }
   
+  # #convert modifier to factor and construct contrast matrix
+  # if(!is.null(modifier)){
+  #   orig_modifier <- modifier
+  #   modifier <- as.factor(modifier)
+  #   modifier <- as.matrix(model.matrix(~modifier)[,-1])
+  # }
+  
   #differences, regardless of modifier: h(z_1^{qs}, z_2^{qs}, \dots, z_M^{qs}) - h(z_1^{q}, z_2^{q}, \dots, z_M^{q})
   point2 <- apply(Z, 2, quantile, q.fixed)
   point1 <- apply(Z, 2, quantile, qs)
   newz.q1 <- newz.q2 <- rbind(point1, point2) 
   
   #modifier
-  modnew.1 <- rep(1, 2)
-  modnew.2 <-rep(0, 2)
+  modnew.1 <-rep(mod.diff[2], 2)
+  modnew.2 <-rep(mod.diff[1], 2)
 
   if (method %in% c("exact")) {
     preds.fun <- function(znew, modnew){
@@ -497,6 +537,13 @@ OverallIntSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
     if (is.null(X)) X <- fit$X
     if (is.null(modifier)) modifier <- fit$modifier
   }
+  
+  # #convert modifier to factor and construct contrast matrix
+  # if(!is.null(modifier)){
+  #   orig_modifier <- modifier
+  #   modifier <- as.factor(modifier)
+  #   modifier <- as.matrix(model.matrix(~modifier)[,-1])
+  # }
   
   if(is.null(modifier)){
     stop("Cannot compute overall interactive effect between groups for model without modification.")

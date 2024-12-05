@@ -252,8 +252,9 @@ h.update <- function(lambda, Vcomps, sigsq.eps, y, X, beta, r, Z, data.comps, mo
 		Kpart <- makeKpart(r, Z)
 		K <- exp(-Kpart)
 		if(kernel.method == "two"){
-		  zero_idx <- outer((modifier+1), (modifier+1), "*")#1*1=1 or 2*2=4 is same group, 1*2=2 is different group
-		  K[zero_idx == 2] <- 0
+		  K <- block_kernel(mod_vec1 = modifier,
+		                    mod_vec2 = modifier,
+		                    K = K)
 		}
 		Vinv <- Vcomps$Vinv
 		lambda <- lambda[1] ## in case with random intercept (randint==TRUE), where lambda is 2-dimensional
@@ -298,13 +299,15 @@ newh.update <- function(Z, Znew, mod_new, Vcomps, lambda, sigsq.eps, r, y, X, be
 		# Kmat10 <- Kmat[(n0+1):nall,1:n0 ,drop=FALSE]
 		Kmat1 <- exp(-makeKpart(r, Znew))
 		if(kernel.method == "two"){
-		  zero_idx <- outer((mod_new+1), (mod_new+1), "*") #1*1=1 or 2*2=4 is same group, 1*2=2 is different group
-		  Kmat1[zero_idx == 2] <- 0
+		  Kmat1 <- block_kernel(mod_vec1 = mod_new,
+		                        mod_vec2 = mod_new,
+		                        K = Kmat1)
 		}
 		Kmat10 <- exp(-makeKpart(r, Znew, Z))
 		if(kernel.method == "two"){
-		  zero_idx <- outer((mod_new+1), (modifier+1), "*")#1*1=1 or 2*2=4 is same group, 1*2=2 is different group
-		  Kmat10[zero_idx == 2] <- 0
+		  Kmat10 <- block_kernel(mod_vec1 = mod_new,
+		                         mod_vec2 = modifier,
+		                         K = Kmat10)
 		}
 
 		if(is.null(Vcomps)) {
@@ -332,8 +335,9 @@ newh.update <- function(Z, Znew, mod_new, Vcomps, lambda, sigsq.eps, r, y, X, be
 		# Kmat10 <- Kmat[(n0+1):nall,1:n0 ,drop=FALSE]
 		Kmat10 <- exp(-makeKpart(r, Znew, data.comps$knots))
 		if(!is.null(modifier)){
-		  zero_idx <- outer((modifier+1), (modifier+1), "*")#1*1=1 or 2*2=4 is same group, 1*2=2 is different group
-		  Kmat10[zero_idx == 2] <- 0
+		  Kmat10 <- block_kernel(mod_vec1 = modifier,
+		                         mod_vec2 = modifier,
+		                         K = Kmat10)
 		}
 
 		if(is.null(Vcomps)) {
@@ -400,8 +404,9 @@ newh.postmean <- function(fit, Znew, sel, modifier = NULL) {
 		Kpartall <- makeKpart(r, rbind(Z, Znew))
 		Kmat <- exp(-Kpartall)
 		if(!is.null(kern_modifier)){
-		  zero_idx <- outer((modifier+1), (modifier+1), "*")#1*1=1 or 2*2=4 is same group, 1*2=2 is different group
-		  Kmat[zero_idx == 2] <- 0
+		  Kmat <- block_kernel(mod_vec1 = modifier,
+		                       mod_vec2 = modifier,
+		                       K = Kmat)
 		}
 		Kmat0 <- Kmat[1:n0,1:n0 ,drop=FALSE]
 		Kmat1 <- Kmat[(n0+1):nall,(n0+1):nall ,drop=FALSE]
@@ -424,13 +429,15 @@ newh.postmean <- function(fit, Znew, sel, modifier = NULL) {
 		# Kmat10 <- Kmat[(n0+1):nall,1:n0 ,drop=FALSE]
 		Kmat1 <- exp(-makeKpart(r, Znew))
 		if(!is.null(kern_modifier)){
-		  zero_idx <- outer((modifier+1), (modifier+1), "*")#1*1=1 or 2*2=4 is same group, 1*2=2 is different group
-		  Kmat1[zero_idx == 2] <- 0
+		  Kmat1 <- block_kernel(mod_vec1 = modifier,
+		                        mod_vec2 = modifier,
+		                        K = Kmat1)
 		}
 		Kmat10 <- exp(-makeKpart(r, Znew, data.comps$knots))
 		if(!is.null(kern_modifier)){
-		  zero_idx <- outer((modifier+1), (modifier+1), "*")#1*1=1 or 2*2=4 is same group, 1*2=2 is different group
-		  Kmat10[zero_idx == 2] <- 0
+		  Kmat10 <- block_kernel(mod_vec1 = modifier,
+		                         mod_vec2 = modifier,
+		                         K = Kmat10)
 		}
 		Vcomps <- makeVcomps(r = r, lambda = lambda, Z = Z, data.comps = data.comps, modifier = kern_modifier)
 

@@ -123,8 +123,15 @@ PredictorResponseUnivar <- function(fit, y = NULL, Z = NULL, X = NULL,
     modifier <- fit$modifier
   }
   
+  # #convert modifier to factor and construct contrast matrix - not needed here because happens in SamplePred later on
+  # if(!is.null(modifier)){
+  #   orig_modifier <- modifier
+  #   modifier <- as.factor(modifier)
+  #   modifier <- as.matrix(model.matrix(~modifier)[,-1])
+  # }
+  
   if(!is.null(modifier) & is.null(which.mod)){
-    which.mod <- c(0,1)
+    which.mod <- unique(modifier)
   }
 
   if (is.null(z.names)) {
@@ -197,6 +204,13 @@ PredictorResponseBivarPair <- function(fit, y = NULL, Z = NULL, X = NULL,
     if (is.null(Z)) Z <- fit$Z
     if (is.null(X)) X <- fit$X
     if (is.null(modifier)) modifier <- fit$modifier
+  }
+  
+  #convert modifier to factor and construct contrast matrix
+  if(!is.null(modifier)){
+    orig_modifier <- modifier
+    modifier <- as.factor(modifier)
+    modifier <- as.matrix(model.matrix(~modifier)[,-1])
   }
 
 
@@ -301,6 +315,13 @@ PredictorResponseBivar <- function(fit, y = NULL, Z = NULL, X = NULL,
     if (is.null(Z)) Z <- fit$Z
     if (is.null(X)) X <- fit$X
     if (is.null(modifier)) modifier <- fit$modifier
+  }
+  
+  #convert modifier to factor and construct contrast matrix
+  if(!is.null(modifier)){
+    orig_modifier <- modifier
+    modifier <- as.factor(modifier)
+    modifier <- as.matrix(model.matrix(~modifier)[,-1])
   }
   
   kernel.method <- fit$kernel.method

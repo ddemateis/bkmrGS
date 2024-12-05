@@ -29,29 +29,32 @@ HFun <- function (z, opt = 1){
 #' @export
 #'
 #' @inheritParams kmbayes
-#' @param opt Simulation scenario option: 1 for no modification, 2 for opposite effects, 3 for an effect in one group, and 4 for a scaled effect between groups
+#' @param scenario Simulation scenario option: "none" for no modification between two groups, "oneGroup" for one group effect out of two groups, "scaled2" for one groups having a scaled effect of the other group with 2 exposures, "scaled3" is the same but for 3 exposures, and "multi" for one group with no effect and the other two groups having a scaled effect
 #' @param SNR signal-to-noise ratio
-#' @param M number of exposures (1 to 3 supported)
-#' @param bin_mod 0 for group 1, 1 for group 2
 #' @param mod_DGM indicator for including modifier in data generating mechanism
 #' @param sim_exp indicator for using simulated exposure values and covariates. Not recommended for simulation
-SimData2 <- function (opt = 1,
+SimData2 <- function (scenario = "none",
                       SNR = 10,
-                      M = 2,
-                      bin_mod = 0,
                       mod_DGM = T,
                       sim_exp = F){
   
+  
   #data_standardized is lazy loaded
-  med_vita <- median(data_standardized$vita)
-  if(bin_mod == 0){
-    dta <- data_standardized[data_standardized$vita < med_vita,]
-  }else if(bin_mod == 1){
-    dta <- data_standardized[data_standardized$vita >= med_vita,]
-  }else{
-    stop("wrong bin_mod value. either 0 or 1")
-  }
+  dta <- data_standardized
   n <- nrow(dta)
+  
+  if(scenario == "scaled3"){
+    M <- 3
+  }else{
+    M <- 2
+  }
+  
+  #sort by modifier
+  if(scenario != "multi"){
+    dta <- dta[order(dta$vita),]
+  }else{
+    dta <- dta[order(dta$X16),]
+  }
   
   #generate exposures
   if(sim_exp){
@@ -84,13 +87,45 @@ SimData2 <- function (opt = 1,
   beta.true <- rnorm(ncol(X))
   
   #construct exposure-response curve
-  h <- apply(Z, 1, HFun, opt = opt)
-  
+  h <- c()
+  if(scenario != "multi"){
+    med_vita <- median(data_standardized$vita)
+    modifier <- ifelse(data_standardized$vita < med_vita, "low", "high")
+    for(i in 1:n){
+      if(scenario == "none"){
+        opt = 1
+      }else if(scenario == "oneGroup"){
+        opt = 3
+      }else if(scenario == "scaled2" | scenario == "scaled3"){
+        opt = 4
+      }
+      h[i] <- HFun(Z[i,], opt = ifelse(modifier[i] == "low", 1, opt))
+    }
+    mod_effect <- as.matrix(model.matrix(~modifier)[,-1]) * 1
+    modifier <- factor(modifier, levels = c("low", "high"))
+  }else{
+    modifier <- vector("character", n)
+    ref <- factor(round(dta$X16, 2))
+    modifier[ref == "0.02"] <- "low"
+    modifier[ref == "0.05"] <- "medium"
+    modifier[ref == "0.07"] <- "high"
+    for(i in 1:n){
+      if(modifier[i] == "low"){
+        opt = 1
+      }else if(modifier[i] == "medium"){
+        opt = 4
+      }else if(modifier[i] == "high"){
+        opt = 3
+      }
+      h[i] <- HFun(Z[i,], opt = opt)
+    }
+    mod_effect <- model.matrix(~modifier)[,-1] %*% c(1,1)
+    modifier <- factor(modifier, levels = c("low", "medium", "high"))
+  }
   
   #mean response
   if(mod_DGM){
-    mu <- X %*% beta.true + h + bin_mod #bin_mod is modifier, defaulting main effect to 1 for binary value 1
-    
+    mu <- X %*% beta.true + h + mod_effect
   }else{
     mu <- X %*% beta.true + h
   }
@@ -111,8 +146,9 @@ SimData2 <- function (opt = 1,
               h = h, 
               X = X, 
               y = y, 
+              modifier = modifier,
               HFun = HFun, 
-              opt = opt,
+              scenario = scenario,
               noise2 = noise^2)
   return(dat)
   

@@ -32,7 +32,7 @@ PredictorResponseBivar(
 
 \item{X}{an \code{n}-by-\code{K} matrix of covariate data where each row represents an observation and each column represents a covariate. Should not contain an intercept column.}
 
-\item{modifier}{a vector of binary values of length \code{n} that may modify the exposure-response associations.}
+\item{modifier}{a vector categorical values of length \code{n} that may modify the exposure-response associations. Control level ordering by using class \code{factor}, or use default level orders with any vector class.}
 
 \item{z.pairs}{data frame showing which pairs of predictors to plot}
 

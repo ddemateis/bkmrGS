@@ -17,8 +17,9 @@ makeVcomps <- function(r, lambda, Z, data.comps, modifier = NULL) {
     Kpart <- makeKpart(r, Z)
     K <- exp(-Kpart)
     if(!is.null(modifier)){
-      zero_idx <- outer((modifier+1), (modifier+1), "*") #1*1=1 or 2*2=4 is same group, 1*2=2 is different group
-      K[zero_idx == 2] <- 0 
+      K <- block_kernel(mod_vec1 = modifier,
+                        mod_vec2 = modifier,
+                        K = K)
     }
     V <- diag(1, nrow(Z), nrow(Z)) + lambda[1]*K
     if (data.comps$nlambda == 2) {
@@ -41,13 +42,15 @@ makeVcomps <- function(r, lambda, Z, data.comps, modifier = NULL) {
     # K10 <- Kall[(n0+1):nall, 1:n0 ,drop=FALSE]
     K1 <- exp(-makeKpart(r, data.comps$knots))
     if(!is.null(modifier)){
-      zero_idx <- outer((modifier+1), (modifier+1), "*") #1*1=1 or 2*2=4 is same group, 1*2=2 is different group
-      K1[zero_idx == 2] <- 0
+      K1 <- block_kernel(mod_vec1 = modifier,
+                         mod_vec2 = modifier,
+                         K = K1)
     }
     K10 <- exp(-makeKpart(r, data.comps$knots, Z))
     if(!is.null(modifier)){
-      zero_idx <- outer((modifier+1), (modifier+1), "*") #1*1=1 or 2*2=4 is same group, 1*2=2 is different group
-      K10[zero_idx == 2] <- 0
+      K10 <- block_kernel(mod_vec1 = modifier, 
+                          mod_vec2 = modifier,
+                          K = K10)
     }
     Q <- K1 + diag(nugget, n1, n1)
     R <- Q + lambda[1]*tcrossprod(K10)
@@ -71,7 +74,7 @@ makeVcomps <- function(r, lambda, Z, data.comps, modifier = NULL) {
 #' @param y a vector of outcome data of length \code{n}.
 #' @param Z an \code{n}-by-\code{M} matrix of predictor variables to be included in the \code{h} function. Each row represents an observation and each column represents an predictor.
 #' @param X an \code{n}-by-\code{K} matrix of covariate data where each row represents an observation and each column represents a covariate. Should not contain an intercept column.
-#' @param modifier a vector of binary values of length \code{n} that may modify the exposure-response associations. 
+#' @param modifier a vector categorical values of length \code{n} that may modify the exposure-response associations. Control level ordering by using class \code{factor}, or use default level orders with any vector class.
 #' @param iter number of iterations to run the sampler
 #' @param family a description of the error distribution and link function to be used in the model. Currently implemented for \code{gaussian} and \code{binomial} families.
 #' @param id optional vector (of length \code{n}) of grouping factors for fitting a model with a random intercept. If NULL then no random intercept will be included.
@@ -123,12 +126,19 @@ kmbayes <- function(y, Z, X = NULL,
   if (missingX) X <- matrix(0, length(y), 1)
   hier_varsel <- !is.null(groups)
   
+  #convert modifier to factor and construct contrast matrix
+  if(!is.null(modifier)){
+    orig_modifier <- modifier
+    modifier <- as.factor(modifier)
+    modifier <- as.matrix(model.matrix(~modifier)[,-1])
+  }
+  
   #make sure kernel.method is provided properly
   if(kernel.method == "one"){
     kern_modifier <- NULL
   }else if (kernel.method == "two"){
     if(is.null(modifier)){
-      warning("Two-kernel aproach is only for BKMR with effect modification. Setting kernel.method to 'one'.")
+      warning("Group-separable aproach is only for BKMR with effect modification. Setting kernel.method to 'one'.")
       kernel.method <- "one"
     }else{
       kern_modifier <- modifier
@@ -284,16 +294,21 @@ kmbayes <- function(y, Z, X = NULL,
     warning("Cannot perform selection on modifier. Setting modtest to FALSE.")
     modtest <- FALSE
   }
+  
   #if varsel is not set to TRUE but modtest is, then set varsel to TRUE to perform selection on the modifier
-  if(!varsel & modtest){ #added by DD
-    varsel <- T #added by DD
-  } #added by DD
+  if(!varsel & modtest){
+    varsel <- T
+  }
+  if(modtest){
+    warning("selection on modifiers not supported. Setting modtest to FALSE.")
+    modtest <- FALSE
+  }
   if (varsel) {
-    if (is.null(ztest) & !modtest) { #added by DD
+    if (is.null(ztest) & !modtest) {
       ztest <- 1:(ncol(Z) - !is.null(modifier))
     }
-    if(modtest){ #added by DD
-      ztest <- c(ztest, (ncol(Z) - !is.null(modifier))+1) #added by DD
+    if(modtest){
+      ztest <- c(ztest, (ncol(Z) - !is.null(modifier))+1)
     }
     rdelta.update <- rdelta.comp.update
   } else {
@@ -534,13 +549,13 @@ kmbayes <- function(y, Z, X = NULL,
   chain$starting.values <- starting.values
   chain$control.params <- control.params
   if(!is.null(modifier)){#added by DD
-    chain$X <- X[,1:(ncol(X)-1)]#added by DD
+    chain$X <- X[,1:(ncol(X)-ncol(modifier))]#added by DD
     if(kernel.method == "one"){
-      chain$Z <- Z[,1:(ncol(Z)-1)]#added by DD
+      chain$Z <- Z[,1:(ncol(Z)-ncol(modifier))]#added by DD
     }else{
       chain$Z <- Z
     }
-    chain$modifier <- modifier #added by DD
+    chain$modifier <- orig_modifier #added by DD
   }else{#added by DD
     chain$X <- X#added by DD
     chain$Z <- Z#added by DD
