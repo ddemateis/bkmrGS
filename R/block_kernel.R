@@ -9,10 +9,11 @@ block_kernel <- function(mod_vec1, mod_vec2, K){
   m2 <- apply(mod_vec2, 1, paste, collapse = "")
 
   #construct a logical matrix to block K based on groups
-  block_idx <- matrix(apply(expand.grid(m1,m2), 
-                            1, 
-                            function(x)x[1]==x[2]), 
-                      ncol = length(m2))
+  # block_idx <- matrix(apply(expand.grid(m1,m2), 
+  #                           1, 
+  #                           function(x)x[1]==x[2]), 
+  #                     ncol = length(m2))
+  block_idx <- t(sapply(m1, function(x) x == m2))
   
   #return the original K matrix with elements in different groups set to 0
   return(K * block_idx)
