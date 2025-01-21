@@ -2,9 +2,9 @@
 riskSummary.approx <- function(point1, point2, modnew = NULL, preds.fun, ...) {
   cc <- c(-1, 1)
   newz <- rbind(point1, point2)
-  if(!is.null(modnew)){
-    modnew <- matrix(rep(modnew, nrow(newz)), ncol=1)
-  }
+  # if(!is.null(modnew)){
+  #   modnew <- matrix(rep(modnew, nrow(newz)), ncol=1)
+  # }
   preds <- preds.fun(newz, modnew, ...)
   diff <- drop(cc %*% preds$postmean) #E[AX] = A*E[X]
   diff.sd <- drop(sqrt(cc %*% preds$postvar %*% cc)) #V[AX] = A * V[X] *A'
@@ -123,16 +123,89 @@ OverallRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
     stop("method must be one of c('approx', 'exact')")
   }
   
+  if(!is.null(m.fixed)){
+    modnew <- matrix(rep(m.fixed, 2), ncol=1)
+  }else{
+    modnew <- NULL
+  }
+  
   tmp_fn <- function(quant) { 
     riskSummary(point1 = point1, 
                 point2 = apply(Z, 2, quantile, quant),
-                modnew = m.fixed,
+                modnew = modnew,
                 preds.fun = preds.fun) 
   }
   
   #for each quantile in qs, call call riskSummary function
   risks.overall <- t(sapply(qs, tmp_fn))
   risks.overall <- data.frame(quantile = qs, risks.overall)
+}
+
+#' Calculate modifier interaction summaries
+#' 
+#' Compare estimated \code{h} function when all predictors are at a particular quantile to when all are at a second fixed quantile
+#' @inheritParams kmbayes
+#' @inheritParams ComputePostmeanHnew
+#' @inherit ComputePostmeanHnew details
+#' @param q.fixed vector of quantiles at which to calculate the summary 
+#' @param m.diff vector of two modifier values at which to compare the estimated \code{h} function
+#' @export
+#' @return a data frame containing the (posterior mean) estimate and posterior standard deviation of the overall risk measures
+
+ModifierIntSummaries <- function(fit, y = NULL, Z = NULL, X = NULL, 
+                                 modifier = NULL, m.diff,
+                                 q.fixed = seq(0.25, 0.75, by = 0.05), 
+                                 method = "approx", sel = NULL) {
+  
+  if (inherits(fit, "bkmrfit")) {
+    if (is.null(y)) 
+      y <- fit$y
+    if (is.null(Z)) 
+      Z <- fit$Z
+    if (is.null(X)) 
+      X <- fit$X
+    if (is.null(modifier)) 
+      modifier <- fit$modifier   
+  }
+  
+  # happens in computepostmeanhnew
+  # #convert modifier to factor and construct contrast matrix
+  # if(!is.null(modifier)){
+  #   orig_modifier <- modifier
+  #   modifier <- as.factor(modifier)
+  #   modifier <- as.matrix(model.matrix(~modifier)[,-1])
+  # }
+  
+  if (method %in% c("approx", "exact")) {
+    
+    preds.fun <- function(znew, modnew=NULL) {
+      
+      ComputePostmeanHnew(fit = fit,
+                          y = y,
+                          Z = Z,
+                          X = X,
+                          modifier = modifier,
+                          Znew = znew,
+                          mod_new = modnew,
+                          sel = sel,
+                          method = method)
+      
+    }
+    riskSummary <- riskSummary.approx
+  }else {
+    stop("method must be one of c('approx', 'exact')")
+  }
+  
+  tmp_fn <- function(quant) { 
+    riskSummary(point1 = apply(Z, 2, quantile, quant), 
+                point2 = apply(Z, 2, quantile, quant),
+                modnew = m.diff,
+                preds.fun = preds.fun) 
+  }
+  
+  #for each quantile in qs, call call riskSummary function
+  risks.overall <- t(sapply(q.fixed, tmp_fn))
+  risks.overall <- data.frame(quantile = q.fixed, risks.overall)
 }
 
 #used in SingVarRiskSummaries() below
@@ -187,9 +260,14 @@ VarRiskSummary <- function (whichz = 1, fit, y = NULL, Z = NULL, X = NULL,
   else {
     stop("method must be one of c('approx', 'exact')")
   }
+  if(!is.null(m.fixed)){
+    modnew <- matrix(rep(m.fixed, 2), ncol=1)
+  }else{
+    modnew <- NULL
+  }
   riskSummary(point1 = point1,
               point2 = point2,
-              modnew = m.fixed,
+              modnew = modnew,
               preds.fun = preds.fun, 
               ...)
 }
@@ -318,7 +396,7 @@ SingVarIntSummary <- function(whichz = 1, fit, y = NULL, Z = NULL,
   
   #tack on the modifier
   if(!is.null(modifier)){#need modnew even for two-kernel model, SamplePred handles it
-    modnew.1 <- rep(mod.diff[2], 2)
+    modnew.1 <- rep(mod.diff[1], 2)
   }else{
     modnew.1 <- rep(NULL, 2)
   }
@@ -332,7 +410,7 @@ SingVarIntSummary <- function(whichz = 1, fit, y = NULL, Z = NULL,
   
   #tack on the modifier
   if(!is.null(modifier)){ #need modnew even for two-kernel model, SamplePred handles it
-    modnew.2 <-rep(mod.diff[1], 2)
+    modnew.2 <-rep(mod.diff[2], 2)
   }else{
     modnew.2 <- rep(NULL, 2)
   }
@@ -506,6 +584,7 @@ OverallIntSummary <- function(whichz = 1, fit, y = NULL, Z = NULL,
 #' @inherit ComputePostmeanHnew details
 #' @param qs vector of quantiles at which to calculate the overall risk summary 
 #' @param q.fixed a second quantile at which to compare the estimated \code{h} function
+#' @param mod.diff a vector of two unique modifier values to compare the estimated \code{h} function
 #' @export
 #' 
 #' @return a data frame containing the (posterior mean) estimate and posterior standard deviation of the single-predictor risk measures
@@ -527,7 +606,7 @@ OverallIntSummary <- function(whichz = 1, fit, y = NULL, Z = NULL,
 #' risks.int <- SingVarIntSummaries(fit = fitkm, method = "exact")
 OverallIntSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
                                 modifier = NULL, which.z = 1:ncol(Z), 
-                                qs = seq(0.25, 0.75,0.05), 
+                                qs = seq(0.25, 0.75,0.05), mod.diff,
                                 q.fixed = 0.5, method = "approx", 
                                 sel = NULL, z.names = colnames(Z), ...) {
   
@@ -560,6 +639,7 @@ OverallIntSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
                       modifier = modifier, 
                       qs = q_s, 
                       q.fixed = q.fixed, 
+                      mod.diff = mod.diff,
                       method = method, 
                       sel = sel,
                       ...)))
