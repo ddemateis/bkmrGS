@@ -106,9 +106,9 @@ SimData2 <- function (scenario = "none",
   }else{
     modifier <- vector("character", n)
     ref <- factor(round(dta$X16, 2))
-    modifier[ref == "0.02"] <- "low"
-    modifier[ref == "0.05"] <- "medium"
-    modifier[ref == "0.07"] <- "high"
+    modifier[ref == "0.02"] <- "low" #13% of observations
+    modifier[ref == "0.05"] <- "medium" #66% of observations
+    modifier[ref == "0.07"] <- "high" #21% of observations
     for(i in 1:n){
       if(modifier[i] == "low"){
         opt = 1
