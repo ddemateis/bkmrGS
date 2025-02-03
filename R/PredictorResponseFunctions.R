@@ -50,18 +50,22 @@ PredictorResponseUnivarVar <- function(whichz = 1, fit, y, Z, X, modifier, metho
                             Xnew = matrix(0, nrow=nrow(newz.grid), ncol=ncol(X)),
                             mod_new = mod_new, 
                             sel = sel)
+        if(center){
+          preds <- center_ERF(preds, mod_new) #center by group and at each iteration
+        }
         preds.plot <- colMeans(preds)
+        
         se.plot <- apply(preds, 2, sd)
       }else{
         preds <- ComputePostmeanHnew(fit = fit, y = y, Z = Z, X = X, modifier = modifier, Znew = newz.grid, mod_new = mod_new, sel = sel, method = method)
         preds.plot <- preds$postmean
         se.plot <- sqrt(diag(preds$postvar))
+        if(center) preds.plot <- preds.plot - mean(preds.plot) #warning: needs to be centered by group
       }
       
     } else {
       stop("method must be one of c('approx', 'exact')")
     }
-    if(center) preds.plot <- preds.plot - mean(preds.plot)
     if(!is.null(min.plot.dist)) {
         preds.plot[mindists > min.plot.dist] <- NA
         se.plot[mindists > min.plot.dist] <- NA
@@ -131,7 +135,7 @@ PredictorResponseUnivar <- function(fit, y = NULL, Z = NULL, X = NULL,
   # }
   
   if(!is.null(modifier) & is.null(which.mod)){
-    which.mod <- unique(modifier)
+    which.mod <- levels(modifier)
   }
 
   if (is.null(z.names)) {
@@ -258,7 +262,7 @@ PredictorResponseBivarPair <- function(fit, y = NULL, Z = NULL, X = NULL,
     } else {
       stop("method must be one of c('approx', 'exact')")
     }
-    if(center) preds.plot <- preds.plot - mean(preds.plot)
+    if(center) preds.plot <- preds.plot - mean(preds.plot) #warning: not centered by modifier group
     if(!is.null(min.plot.dist)) {
         preds.plot[mindists > min.plot.dist] <- NA
         se.plot[mindists > min.plot.dist] <- NA
