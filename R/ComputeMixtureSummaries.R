@@ -100,8 +100,16 @@ OverallRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
   #   modifier <- as.matrix(model.matrix(~modifier)[,-1])
   # }
   
+  if(!is.null(m.fixed)){
+    modnew <- matrix(rep(m.fixed, 2), ncol=1)
+    Z_for_quants <- Z[modifier == m.fixed,]
+  }else{
+    modnew <- NULL
+    Z_for_quants <- Z
+  }
+  
   #get the quantiles of the exposures for the first point of comparison specified by q.fixed
-  point1 <- apply(Z, 2, quantile, q.fixed)
+  point1 <- apply(Z_for_quants, 2, quantile, q.fixed)
 
   if (method %in% c("approx", "exact")) {
     
@@ -121,12 +129,6 @@ OverallRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
     riskSummary <- riskSummary.approx
   }else {
     stop("method must be one of c('approx', 'exact')")
-  }
-  
-  if(!is.null(m.fixed)){
-    modnew <- matrix(rep(m.fixed, 2), ncol=1)
-  }else{
-    modnew <- NULL
   }
   
   tmp_fn <- function(quant) { 
@@ -235,10 +237,18 @@ VarRiskSummary <- function (whichz = 1, fit, y = NULL, Z = NULL, X = NULL,
   #   m.fixed <- as.matrix(model.matrix(~m.fixed)[,-1])
   # }
   
-  point2 <- point1 <- apply(Z, 2, quantile, q.fixed) #get exposures at fixed quantile q.fixed, along with the fixed modifier value
-  point2[whichz] <- apply(Z[, whichz, drop = FALSE], 2, quantile, 
+  if(!is.null(m.fixed)){
+    modnew <- matrix(rep(m.fixed, 2), ncol=1)
+    Z_for_quants <- Z[modifier == m.fixed,]
+  }else{
+    modnew <- NULL
+    Z_for_quants <- Z
+  }
+  
+  point2 <- point1 <- apply(Z_for_quants, 2, quantile, q.fixed) #get exposures at fixed quantile q.fixed, along with the fixed modifier value
+  point2[whichz] <- apply(Z_for_quants[, whichz, drop = FALSE], 2, quantile, 
                           qs.diff[2]) #for given exposure whichz, change that exposure to the larger quantile in the difference, qs.diff[2]
-  point1[whichz] <- apply(Z[, whichz, drop = FALSE], 2, quantile, 
+  point1[whichz] <- apply(Z_for_quants[, whichz, drop = FALSE], 2, quantile, 
                           qs.diff[1]) #for given exposure whichz, change that exposure to the larger quantile in the difference, qs.diff[1]
   
   if (method %in% c("approx", "exact")) {
@@ -260,11 +270,7 @@ VarRiskSummary <- function (whichz = 1, fit, y = NULL, Z = NULL, X = NULL,
   else {
     stop("method must be one of c('approx', 'exact')")
   }
-  if(!is.null(m.fixed)){
-    modnew <- matrix(rep(m.fixed, 2), ncol=1)
-  }else{
-    modnew <- NULL
-  }
+  
   riskSummary(point1 = point1,
               point2 = point2,
               modnew = modnew,
@@ -387,33 +393,34 @@ SingVarIntSummary <- function(whichz = 1, fit, y = NULL, Z = NULL,
   #   mod.diff <- as.matrix(model.matrix(~mod.diff)[,-1])
   # }
   
-  #second difference: h(z_1^{qs2}, z_2^{q2}, \dots, z_M^{q2}) - h(z_1^{qs1}, z_2^{q2}, \dots, z_M^{q2})
-  q.fixed <- qs.fixed[1] #first quantile to fix remaining exposures
-  point2 <- point1 <- apply(Z, 2, quantile, q.fixed) #get desired quantiles for all exposures
-  point2[whichz] <- quantile(Z[, whichz], qs.diff[2]) #h(z_1^{qs2}, z_2^{q2}, \dots, z_M^{q2})
-  point1[whichz] <- quantile(Z[, whichz], qs.diff[1]) #h(z_1^{qs1}, z_2^{q2}, \dots, z_M^{q2})
-  newz.q1 <- rbind(point1, point2) 
-  
-  #tack on the modifier
+  #modifier for difference, if modification 
   if(!is.null(modifier)){#need modnew even for two-kernel model, SamplePred handles it
     modnew.1 <- rep(mod.diff[1], 2)
+    modnew.2 <-rep(mod.diff[2], 2)
+    
+    #subset exposures so each exposure has the same min and max per group
+    Z_for_quants <- Z_support(Z = Z, 
+                              mod.diff = mod.diff, 
+                              modifier = modifier)
   }else{
     modnew.1 <- rep(NULL, 2)
+    modnew.2 <- rep(NULL, 2)
+    Z_for_quants <- Z
   }
+
+  #second difference: h(z_1^{qs2}, z_2^{q2}, \dots, z_M^{q2}) - h(z_1^{qs1}, z_2^{q2}, \dots, z_M^{q2})
+  q.fixed <- qs.fixed[1] #first quantile to fix remaining exposures
+  point2 <- point1 <- apply(Z_for_quants, 2, quantile, q.fixed) #get desired quantiles for all exposures, for group 1 if there is a group 1
+  point2[whichz] <- quantile(Z_for_quants[, whichz], qs.diff[2]) #h(z_1^{qs2}, z_2^{q2}, \dots, z_M^{q2})
+  point1[whichz] <- quantile(Z_for_quants[, whichz], qs.diff[1]) #h(z_1^{qs1}, z_2^{q2}, \dots, z_M^{q2})
+  newz.q1 <- rbind(point1, point2) 
   
   #first difference: h(z_1^{qs2}, z_2^{q1}, \dots, z_M^{q1}) - h(z_1^{qs1}, z_2^{q1}, \dots, z_M^{q1})
   q.fixed <- qs.fixed[2] #first quantile to fix remaining exposures
-  point2 <- point1 <- apply(Z, 2, quantile, q.fixed) #get desired quantiles for all exposures
-  point2[whichz] <- quantile(Z[, whichz], qs.diff[2]) #h(z_1^{qs2}, z_2^{q1}, \dots, z_M^{q1})
-  point1[whichz] <- quantile(Z[, whichz], qs.diff[1]) #h(z_1^{qs1}, z_2^{q1}, \dots, z_M^{q1})
+  point2 <- point1 <- apply(Z_for_quants, 2, quantile, q.fixed) #get desired quantiles for all exposures, for group 2 if there is a group 2
+  point2[whichz] <- quantile(Z_for_quants[, whichz], qs.diff[2]) #h(z_1^{qs2}, z_2^{q1}, \dots, z_M^{q1})
+  point1[whichz] <- quantile(Z_for_quants[, whichz], qs.diff[1]) #h(z_1^{qs1}, z_2^{q1}, \dots, z_M^{q1})
   newz.q2 <- rbind(point1, point2)
-  
-  #tack on the modifier
-  if(!is.null(modifier)){ #need modnew even for two-kernel model, SamplePred handles it
-    modnew.2 <-rep(mod.diff[2], 2)
-  }else{
-    modnew.2 <- rep(NULL, 2)
-  }
   
   if (method %in% c("approx", "exact")) {
     preds.fun <- function(znew, modnew){
@@ -546,15 +553,20 @@ OverallIntSummary <- function(whichz = 1, fit, y = NULL, Z = NULL,
   #   modifier <- as.matrix(model.matrix(~modifier)[,-1])
   # }
   
+  #modifier
+  modnew.1 <-rep(mod.diff[1], 2)
+  modnew.2 <-rep(mod.diff[2], 2)
+  
+  #subset exposures so each exposure has the same min and max per group
+  Z_for_quants <- Z_support(Z = Z,
+                            mod.diff = mod.diff,
+                            modifier = modifier)
+
   #differences, regardless of modifier: h(z_1^{qs}, z_2^{qs}, \dots, z_M^{qs}) - h(z_1^{q}, z_2^{q}, \dots, z_M^{q})
-  point2 <- apply(Z, 2, quantile, q.fixed)
-  point1 <- apply(Z, 2, quantile, qs)
+  point2 <- apply(Z_for_quants, 2, quantile, q.fixed)
+  point1 <- apply(Z_for_quants, 2, quantile, qs)
   newz.q1 <- newz.q2 <- rbind(point1, point2) 
   
-  #modifier
-  modnew.1 <-rep(mod.diff[2], 2)
-  modnew.2 <-rep(mod.diff[1], 2)
-
   if (method %in% c("exact")) {
     preds.fun <- function(znew, modnew){
       SamplePred(fit = fit,
@@ -644,4 +656,26 @@ OverallIntSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
                       sel = sel,
                       ...)))
   risks.overall <- data.frame(quantile = qs, risks.overall)
+}
+
+Z_support <- function(Z, mod.diff, modifier){
+  #get min and max of exposures for each modifier group
+  mod1_idx <- which(modifier==mod.diff[1])
+  min1 <- apply(Z[mod1_idx,], 2, min)
+  max1 <- apply(Z[mod1_idx,], 2, max)
+  mod2_idx <- which(modifier==mod.diff[2])
+  min2 <- apply(Z[mod2_idx,], 2, min)
+  max2 <- apply(Z[mod2_idx,], 2, max)
+  
+  #get minimax and maximin for truncation
+  expo_min <- apply(rbind(min1, min2), 2, max)
+  expo_max <- apply(rbind(max1, max2), 2, min)
+  
+  #use truncated exposures so ranges overlap for each group
+  Z_idx <- c()
+  for(z_col in 1:ncol(Z)){
+    sub_z <- Z[,z_col]
+    Z_idx <- cbind(Z_idx, sub_z > expo_min[z_col] & sub_z < expo_max[z_col])
+  }
+  Z_for_quants <- Z[which(rowSums(Z_idx)==ncol(Z)),]
 }

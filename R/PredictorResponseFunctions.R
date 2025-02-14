@@ -41,7 +41,7 @@ PredictorResponseUnivarVar <- function(whichz = 1, fit, y, Z, X, modifier, metho
 
     if (method %in% c("approx", "exact", "fullpost")) {
       if(method == "fullpost"){
-        preds <- SamplePred(fit = fit,
+        pred <- SamplePred(fit = fit,
                             y = y, 
                             Z = Z, 
                             X = X, 
@@ -51,7 +51,11 @@ PredictorResponseUnivarVar <- function(whichz = 1, fit, y, Z, X, modifier, metho
                             mod_new = mod_new, 
                             sel = sel)
         if(center){
-          preds <- center_ERF(preds, mod_new) #center by group and at each iteration
+          if(is.null(mod_new)){
+            preds <- pred - rowMeans(pred)
+          }else{
+            preds <- center_ERF(pred, mod_new) #center by group and at each iteration
+          }
         }
         preds.plot <- colMeans(preds)
         
