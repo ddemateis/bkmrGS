@@ -133,7 +133,7 @@ OverallRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
   
   tmp_fn <- function(quant) { 
     riskSummary(point1 = point1, 
-                point2 = apply(Z, 2, quantile, quant),
+                point2 = apply(Z_for_quants, 2, quantile, quant),
                 modnew = modnew,
                 preds.fun = preds.fun) 
   }
@@ -422,20 +422,18 @@ SingVarIntSummary <- function(whichz = 1, fit, y = NULL, Z = NULL,
   point1[whichz] <- quantile(Z_for_quants[, whichz], qs.diff[1]) #h(z_1^{qs1}, z_2^{q1}, \dots, z_M^{q1})
   newz.q2 <- rbind(point1, point2)
   
-  if (method %in% c("approx", "exact")) {
+  if (method %in% c("approx", "exact", "fullpost")) {
     preds.fun <- function(znew, modnew){
-      if(is.null(modnew)){
+      if(method %in% c("approx", "exact")){
         ComputePostmeanHnew(fit = fit, 
                             y = y, 
                             Z = Z, 
                             X = X, 
                             Znew = znew, 
+                            mod_new = modnew,
                             sel = sel, 
                             method = method)
       }else{
-        if(method == "approx"){
-          warning("Approximate method not supported for modification. Using exact instead.")
-        }
         SamplePred(fit = fit,
                    y = y,
                    Z = Z,
@@ -446,11 +444,10 @@ SingVarIntSummary <- function(whichz = 1, fit, y = NULL, Z = NULL,
                    mod_new = modnew,
                    sel = sel)
       }
-      
     }
     interactionSummary <- interactionSummary.approx
   } else {
-    stop("method must be one of c('approx', 'exact')")
+    stop("method must be one of c('approx', 'exact', 'fullpost')")
   }
   interactionSummary(newz.q1, newz.q2, modnew.1, modnew.2, preds.fun, ...)
 }
@@ -567,23 +564,34 @@ OverallIntSummary <- function(whichz = 1, fit, y = NULL, Z = NULL,
   point1 <- apply(Z_for_quants, 2, quantile, qs)
   newz.q1 <- newz.q2 <- rbind(point1, point2) 
   
-  if (method %in% c("exact")) {
+  if (method %in% c("approx", "exact", "fullpost")) {
     preds.fun <- function(znew, modnew){
-      SamplePred(fit = fit,
-                 y = y,
-                 Z = Z,
-                 X = X,
-                 modifier = modifier,
-                 Znew = znew,
-                 Xnew = matrix(0, nrow = nrow(znew), ncol = ncol(X)),
-                 mod_new = modnew,
-                 sel = sel)
+      if(method %in% c("approx", "exact")){
+        ComputePostmeanHnew(fit = fit, 
+                            y = y, 
+                            Z = Z, 
+                            X = X, 
+                            Znew = znew, 
+                            mod_new = modnew,
+                            sel = sel, 
+                            method = method)
+      }else{
+        SamplePred(fit = fit,
+                   y = y,
+                   Z = Z,
+                   X = X,
+                   modifier = modifier,
+                   Znew = znew,
+                   Xnew = matrix(0, nrow = nrow(znew), ncol = ncol(X)),
+                   mod_new = modnew,
+                   sel = sel)
+      }
     }
-      
     interactionSummary <- interactionSummary.approx
   } else {
-    stop("method must be 'exact'")
+    stop("method must be one of c('approx', 'exact', 'fullpost')")
   }
+
   interactionSummary(newz.q1, newz.q2, modnew.1, modnew.2, preds.fun, ...)
 }
 
@@ -658,24 +666,3 @@ OverallIntSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
   risks.overall <- data.frame(quantile = qs, risks.overall)
 }
 
-Z_support <- function(Z, mod.diff, modifier){
-  #get min and max of exposures for each modifier group
-  mod1_idx <- which(modifier==mod.diff[1])
-  min1 <- apply(Z[mod1_idx,], 2, min)
-  max1 <- apply(Z[mod1_idx,], 2, max)
-  mod2_idx <- which(modifier==mod.diff[2])
-  min2 <- apply(Z[mod2_idx,], 2, min)
-  max2 <- apply(Z[mod2_idx,], 2, max)
-  
-  #get minimax and maximin for truncation
-  expo_min <- apply(rbind(min1, min2), 2, max)
-  expo_max <- apply(rbind(max1, max2), 2, min)
-  
-  #use truncated exposures so ranges overlap for each group
-  Z_idx <- c()
-  for(z_col in 1:ncol(Z)){
-    sub_z <- Z[,z_col]
-    Z_idx <- cbind(Z_idx, sub_z > expo_min[z_col] & sub_z < expo_max[z_col])
-  }
-  Z_for_quants <- Z[which(rowSums(Z_idx)==ncol(Z)),]
-}

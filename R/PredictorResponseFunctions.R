@@ -7,10 +7,20 @@ PredictorResponseUnivarVar <- function(whichz = 1, fit, y, Z, X, modifier, metho
     } else {
         colnames(Z) <- z.names
     }
+  
+    #subset exposures so each exposure has the same min and max per group
+    if(!is.null(modifier)){
+      Z_for_quants <- Z_support(Z = Z,
+                                mod.diff = levels(modifier),
+                                modifier = modifier)
+    }else{
+      Z_for_quants <- Z
+    }
+    
 
-    ord <- c(whichz, setdiff(1:ncol(Z), whichz))
-    z1 <- seq(min(Z[,ord[1]]), max(Z[,ord[1]]), length = ngrid)
-    z.others <- lapply(2:ncol(Z), function(x) quantile(Z[,ord[x]], q.fixed))
+    ord <- c(whichz, setdiff(1:ncol(Z_for_quants), whichz))
+    z1 <- seq(min(Z_for_quants[,ord[1]]), max(Z_for_quants[,ord[1]]), length = ngrid)
+    z.others <- lapply(2:ncol(Z_for_quants), function(x) quantile(Z[,ord[x]], q.fixed))
     z.all <- c(list(z1), z.others)
     newz.grid <- expand.grid(z.all)
     colnames(newz.grid) <- colnames(Z)[ord]
@@ -34,7 +44,7 @@ PredictorResponseUnivarVar <- function(whichz = 1, fit, y, Z, X, modifier, metho
         mindists <- rep(NA,nrow(newz.grid))
         for (i in seq_along(mindists)) {
             pt <- as.numeric(newz.grid[i, colnames(Z)[ord[1]]])
-            dists <- fields::rdist(matrix(pt, nrow = 1), Z[, colnames(Z)[ord[1]]])
+            dists <- fields::rdist(matrix(pt, nrow = 1), Z_for_quants[, colnames(Z)[ord[1]]])
             mindists[i] <- min(dists)
         }
     }
@@ -501,3 +511,28 @@ PredictorResponseBivarLevels <- function(pred.resp.df, Z = NULL,
     dplyr::arrange_at(c("variable1", "variable2"))
   df
 }
+
+Z_support <- function(Z, mod.diff, modifier){
+  #get min and max of exposures for each modifier group
+  mins <- c()
+  maxs <- c()
+  for(idx in mod.diff){
+    mod_idx <- which(modifier==idx)
+    mins <- rbind(mins, apply(Z[mod_idx,], 2, min))
+    maxs <- rbind(maxs, apply(Z[mod_idx,], 2, max))
+  }
+  
+  #get minimax and maximin for truncation
+  expo_min <- apply(mins, 2, max)
+  expo_max <- apply(maxs, 2, min)
+  
+  #use truncated exposures so ranges overlap for each group
+  Z_idx <- c()
+  for(z_col in 1:ncol(Z)){
+    sub_z <- Z[,z_col]
+    Z_idx <- cbind(Z_idx, sub_z > expo_min[z_col] & sub_z < expo_max[z_col])
+  }
+  Z_for_quants <- Z[which(rowSums(Z_idx)==ncol(Z)),]
+  return(Z_for_quants)
+}
+
