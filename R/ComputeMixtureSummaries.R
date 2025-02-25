@@ -100,7 +100,10 @@ OverallRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
   #   modifier <- as.matrix(model.matrix(~modifier)[,-1])
   # }
   
-  if(!is.null(m.fixed)){
+  if(!is.null(m.fixed) & kernel.method == "one"){#BKMR-mod
+    modnew <- matrix(rep(m.fixed, 2), ncol=1)
+    Z_for_quants <- Z
+  }else if(!is.null(m.fixed) & kernel.method == "two"){#GS-BKMR
     modnew <- matrix(rep(m.fixed, 2), ncol=1)
     Z_for_quants <- Z[modifier == m.fixed,]
   }else{
@@ -237,7 +240,10 @@ VarRiskSummary <- function (whichz = 1, fit, y = NULL, Z = NULL, X = NULL,
   #   m.fixed <- as.matrix(model.matrix(~m.fixed)[,-1])
   # }
   
-  if(!is.null(m.fixed)){
+  if(!is.null(m.fixed) & kernel.method == "one"){#BKMR-mod
+    modnew <- matrix(rep(m.fixed, 2), ncol=1)
+    Z_for_quants <- Z
+  }else if(!is.null(m.fixed) & kernel.method == "two"){#GS-BKMR
     modnew <- matrix(rep(m.fixed, 2), ncol=1)
     Z_for_quants <- Z[modifier == m.fixed,]
   }else{
