@@ -29,12 +29,15 @@ interactionSummary.approx <- function(newz.q1, newz.q2, modnew.1, modnew.2, pred
   if("matrix" %in% class(preds)){
     post_samp <- preds %*% matrix(cc, ncol=1)
     int <- drop(mean(post_samp))
-    int.se <- drop(sd(post_samp))
+    int.lb <- drop(quantile(post_samp, probs = 0.025))
+    int.ub <- drop(quantile(post_samp, probs = 0.975))
+    c(est = int, lb = int.lb, ub = int.ub)
   }else{
     int <- drop(cc %*% preds$postmean) #E[AX] = A*E[X]
     int.se <- drop(sqrt(cc %*% preds$postvar %*% cc)) #V[AX] = A * V[X] *A'
+    c(est = int, sd = int.se)
   }
-  c(est = int, sd = int.se)
+  
 }
 
 #not used
@@ -532,8 +535,11 @@ SingVarIntSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
                       ...)
   )
   
-  
-  df <- dplyr::tibble(variable = factor(z.names[which.z], levels = z.names), est = ints["est", ], sd = ints["sd", ])
+  if("sd" %in% rownames(ints)){#is sd returned
+    df <- dplyr::tibble(variable = factor(z.names[which.z], levels = z.names), est = ints["est", ], sd = ints["sd", ])
+  }else{#if lb ub returned
+    df <- dplyr::tibble(variable = factor(z.names[which.z], levels = z.names), est = ints["est", ], lb = ints["lb.2.5%", ], ub = ints["ub.97.5%", ])
+  }
 }
 
 #used in OverallIntSummaries() below
