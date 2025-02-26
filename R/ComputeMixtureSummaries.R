@@ -103,16 +103,25 @@ OverallRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
   #   modifier <- as.matrix(model.matrix(~modifier)[,-1])
   # }
   
-  if(!is.null(m.fixed) & kernel.method == "one"){#BKMR-mod
+  if(!is.null(m.fixed) & fit$kernel.method == "one"){#BKMR-mod
     modnew <- matrix(rep(m.fixed, 2), ncol=1)
     Z_for_quants <- Z
-  }else if(!is.null(m.fixed) & kernel.method == "two"){#GS-BKMR
+  }else if(!is.null(m.fixed) & fit$kernel.method == "two"){#GS-BKMR
     modnew <- matrix(rep(m.fixed, 2), ncol=1)
     Z_for_quants <- Z[modifier == m.fixed,]
   }else{
     modnew <- NULL
     Z_for_quants <- Z
   }
+  
+  # if(!is.null(m.fixed)){
+  #   modnew <- matrix(rep(m.fixed, 2), ncol=1)
+  #   Z_for_quants <- Z
+  # }else{
+  #   modnew <- NULL
+  #   Z_for_quants <- Z
+  # }
+  
   
   #get the quantiles of the exposures for the first point of comparison specified by q.fixed
   point1 <- apply(Z_for_quants, 2, quantile, q.fixed)
@@ -243,10 +252,10 @@ VarRiskSummary <- function (whichz = 1, fit, y = NULL, Z = NULL, X = NULL,
   #   m.fixed <- as.matrix(model.matrix(~m.fixed)[,-1])
   # }
   
-  if(!is.null(m.fixed) & kernel.method == "one"){#BKMR-mod
+  if(!is.null(m.fixed) & fit$kernel.method == "one"){#BKMR-mod
     modnew <- matrix(rep(m.fixed, 2), ncol=1)
     Z_for_quants <- Z
-  }else if(!is.null(m.fixed) & kernel.method == "two"){#GS-BKMR
+  }else if(!is.null(m.fixed) & fit$kernel.method == "two"){#GS-BKMR
     modnew <- matrix(rep(m.fixed, 2), ncol=1)
     Z_for_quants <- Z[modifier == m.fixed,]
   }else{
