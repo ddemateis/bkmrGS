@@ -193,8 +193,13 @@ ComputePostmeanHnew.exact <- function(fit, y = NULL, Z = NULL, X = NULL, modifie
   
   if (is.null(dim(X))) X <- matrix(X, ncol=1)
   
-  Znew <- cbind(Znew, mod_new)
-  Z <- cbind(Z, modifier)
+  if(kernel.method == "one"){
+    Znew <- cbind(Znew, mod_new)
+    Z <- cbind(Z, modifier)
+  }else if(kernel.method == "two"){
+    Znew <- Znew
+    Z <- Z
+  }
   X <- cbind(X, modifier)
   
   # if (!is.null(fit$Vinv)) {
