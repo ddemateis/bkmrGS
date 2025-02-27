@@ -352,6 +352,7 @@ newh.update <- function(Z, Znew, mod_new, Vcomps, lambda, sigsq.eps, r, y, X, be
 	hsamp
 }
 
+#function not used anywhere in the package
 ## function to obtain posterior samples of h(znew) from fit of Bayesian kernel machine regression
 predz.samps <- function(fit, Znew, verbose = TRUE, modifier = NULL) {
 	if(is.null(dim(Znew))) Znew <- matrix(Znew, nrow=1)
@@ -376,6 +377,7 @@ predz.samps <- function(fit, Znew, verbose = TRUE, modifier = NULL) {
 	t(hnew.samps)
 }
 
+#function not used anywhere in the package
 ## function to approximate the posterior mean and variance as a function of the estimated tau, lambda, beta, and sigsq.eps
 newh.postmean <- function(fit, Znew, sel, modifier = NULL) {
 	if(is.null(dim(Znew))) Znew <- matrix(Znew, nrow=1)
