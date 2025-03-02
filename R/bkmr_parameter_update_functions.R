@@ -257,11 +257,14 @@ h.update <- function(lambda, Vcomps, sigsq.eps, y, X, beta, r, Z, data.comps, mo
 		                    K = K)
 		}
 		Vinv <- Vcomps$Vinv
-		lambda <- lambda[1] ## in case with random intercept (randint==TRUE), where lambda is 2-dimensional
-		lamKVinv <- lambda*K%*%Vinv
+		scalar_lambda <- lambda_scalar(mod1 = modifier,
+		                               mod2 = modifier,
+		                               lambda = lambda, 
+		                               data.comps = data.comps) ## in case with random intercept (randint==TRUE), don't include lambda for random intercept matrix
+		lamKVinv <- scalar_lambda*K%*%Vinv
 		h.postmean <- lamKVinv%*%(y-X%*%beta)
 		##h.postvar <- sigsq.eps*lamKVinv
-		h.postvar <- sigsq.eps*lambda*(K - lamKVinv%*%K)
+		h.postvar <- sigsq.eps*scalar_lambda*(K - lamKVinv%*%K)
 		h.postvar.sqrt <- try(chol(h.postvar), silent=TRUE)
 		if(inherits(h.postvar.sqrt, "try-error")) {
 			sigsvd <- svd(h.postvar)
@@ -269,7 +272,10 @@ h.update <- function(lambda, Vcomps, sigsq.eps, y, X, beta, r, Z, data.comps, mo
 		}
 		hsamp <- h.postmean + crossprod(h.postvar.sqrt, rnorm(length(h.postmean)))
 		hcomps <- list(hsamp = hsamp)
-	} else {
+	} else {## predictive process approach
+	  if(data.comps$gs.tau){
+	    stop("Predictive process approach not available for group-separable tau model.")
+	  }
 		h.star.postvar.sqrt <- sqrt(sigsq.eps*lambda)*forwardsolve(t(Vcomps$cholR), Vcomps$Q)
 		h.star.postmean <- lambda[1]*Vcomps$Q %*% Vcomps$Rinv %*% Vcomps$K10 %*% (y - X %*% beta)
 		hsamp.star <- h.star.postmean + crossprod(h.star.postvar.sqrt, rnorm(length(h.star.postmean)))
@@ -314,9 +320,17 @@ newh.update <- function(Z, Znew, mod_new, Vcomps, lambda, sigsq.eps, r, y, X, be
 			Vcomps <- makeVcomps(r = r, lambda = lambda, Z = Z, data.comps = data.comps, modifier = kern_modifier)
 		}
 		Vinv <- Vcomps$Vinv
-
-		lamK10Vinv <- lambda[1]*Kmat10 %*% Vinv
-		Sigma.hnew <- lambda[1]*sigsq.eps*(Kmat1 - lamK10Vinv %*% t(Kmat10))
+    
+		scalar_lambda <- lambda_scalar(mod1 = mod_new, 
+		                               mod2 = modifier,
+		                               lambda = lambda,
+		                               data.comps = data.comps)
+		lamK10Vinv <- scalar_lambda*Kmat10 %*% Vinv
+		scalar_lambda <- lambda_scalar(mod1 = mod_new,
+		                               mod2 = mod_new,
+		                               lambda = lambda,
+		                               data.comps = data.comps)
+		Sigma.hnew <- scalar_lambda*sigsq.eps*(Kmat1 - lamK10Vinv %*% t(Kmat10))
 		mu.hnew <- lamK10Vinv %*% (y - X%*%beta)
 		root.Sigma.hnew <- try(chol(Sigma.hnew), silent=TRUE)
 		if(inherits(root.Sigma.hnew, "try-error")) {
@@ -325,6 +339,9 @@ newh.update <- function(Z, Znew, mod_new, Vcomps, lambda, sigsq.eps, r, y, X, be
 		}
 		hsamp <- mu.hnew + crossprod(root.Sigma.hnew, rnorm(n1))
 	} else {
+	  if(data.comps$gs.tau){
+	    stop("Predictive process approach not available for group-separable tau model.")
+	  }
 		n0 <- nrow(data.comps$knots)
 		n1 <- nrow(Znew)
 		nall <- n0 + n1

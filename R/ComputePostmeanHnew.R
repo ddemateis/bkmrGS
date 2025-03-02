@@ -111,7 +111,11 @@ ComputePostmeanHnew.approx <- function(fit, y = NULL, Z = NULL,
                       mod_vec2 = modifier,
                       K = K)
   }
-  V <- diag(1, nrow(Z), nrow(Z)) + lambda[1]*K
+  scalar_lambda <- lambda_scalar(mod1 = modifier,
+                                 mod2 = modifier,
+                                 lambda = lambda,
+                                 data.comps = data.comps)
+  V <- diag(1, nrow(Z), nrow(Z)) + scalar_lambda*K
   cholV <- chol(V)
   Vinv <- chol2inv(cholV)
   
@@ -124,22 +128,37 @@ ComputePostmeanHnew.approx <- function(fit, y = NULL, Z = NULL,
     Kmat <- exp(-Kpartall)
     if(kernel.method == "two"){
       Kmat <- block_kernel(mod_vec1 = modifier,
-                           mod_vec2 = modifier,
+                           mod_vec2 = mod_new,#this was modifier, but should be mod_new to match in Kpartall
                            K = Kmat)
     }
     Kmat0 <- Kmat[1:n0,1:n0 ,drop=FALSE]
     Kmat1 <- Kmat[(n0+1):nall,(n0+1):nall ,drop=FALSE]
     Kmat10 <- Kmat[(n0+1):nall,1:n0 ,drop=FALSE]
     
-    lamK10Vinv <- lambda[1]*Kmat10 %*% Vinv
-    postvar <- lambda[1]*sigsq.eps*(Kmat1 - lamK10Vinv %*% t(Kmat10))
+    scalar_lambda <- lambda_scalar(mod1 = modifier,
+                                   mod2 = mod_new,
+                                   lambda = lambda,
+                                   data.comps = data.comps)
+    if(data.comps$gs.tau){ #scalar_lambda returns a matrix that needs to be adjusted to match the Ks
+      scalar_lambda_10 <- scalar_lambda[(n0+1):nall,1:n0 ,drop=FALSE]
+      scalar_lambda_1 <- scalar_lambda[(n0+1):nall,(n0+1):nall ,drop=FALSE]
+    }else{ #scalar_lambda returns a scalar, no adjustment needed
+      scalar_lambda_10 <- scalar_lambda 
+      scalar_lambda_1 <- scalar_lambda
+    }
+    lamK10Vinv <- scalar_lambda_10*Kmat10 %*% Vinv
+    postvar <- scalar_lambda_1*sigsq.eps*(Kmat1 - lamK10Vinv %*% t(Kmat10))
     postmean <- lamK10Vinv %*% (ycont - X%*%beta)
     # } else {
     # stop("GPP not yet implemented")
     # }
   } else {
-    lamKVinv <- lambda[1]*K%*%Vinv
-    postvar <- lambda[1]*sigsq.eps*(K - lamKVinv%*%K)
+    scalar_lambda <- lambda_scalar(mod1 = modifier,
+                                   mod2 = modifier,
+                                   lambda = lambda,
+                                   data.comps = data.comps)
+    lamKVinv <- scalar_lambda*K%*%Vinv
+    postvar <- scalar_lambda*sigsq.eps*(K - lamKVinv%*%K)
     postmean <- lamKVinv %*% (ycont - X%*%beta)
   }
   ret <- list(postmean = drop(postmean), postvar = postvar)
@@ -259,22 +278,37 @@ ComputePostmeanHnew.exact <- function(fit, y = NULL, Z = NULL, X = NULL, modifie
       Kmat <- exp(-Kpartall)
       if(kernel.method == "two"){
         Kmat <- block_kernel(mod_vec1 = rbind(modifier, mod_new),
-                                 mod_vec2 = rbind(modifier, mod_new),
-                                 K = Kmat)
+                             mod_vec2 = rbind(modifier, mod_new),
+                             K = Kmat)
       }
       Kmat0 <- Kmat[1:n0,1:n0 ,drop=FALSE]
       Kmat1 <- Kmat[(n0+1):nall,(n0+1):nall ,drop=FALSE]
       Kmat10 <- Kmat[(n0+1):nall,1:n0 ,drop=FALSE]
       
-      lamK10Vinv <- lambda[1]*Kmat10 %*% Vinv
-      postvar <- lambda[1]*sigsq.eps*(Kmat1 - lamK10Vinv %*% t(Kmat10))
+      scalar_lambda <- lambda_scalar(mod1 = rbind(modifier, mod_new),
+                                     mod2 = rbind(modifier, mod_new),
+                                     lambda = lambda,
+                                     data.comps = data.comps)
+      if(data.comps$gs.tau){ #scalar_lambda returns a matrix that needs to be adjusted to match the Ks
+        scalar_lambda_10 <- scalar_lambda[(n0+1):nall,1:n0 ,drop=FALSE]
+        scalar_lambda_1 <- scalar_lambda[(n0+1):nall,(n0+1):nall ,drop=FALSE]
+      }else{ #scalar_lambda returns a scalar, no adjustment needed
+        scalar_lambda_10 <- scalar_lambda 
+        scalar_lambda_1 <- scalar_lambda
+      }
+      lamK10Vinv <- scalar_lambda_10*Kmat10 %*% Vinv
+      postvar <- scalar_lambda_1*sigsq.eps*(Kmat1 - lamK10Vinv %*% t(Kmat10))
       postmean <- lamK10Vinv %*% (ycont - X%*%beta)
       # } else {
       # stop("GPP not yet implemented")
       # }
     } else {
-      lamKVinv <- lambda[1]*K%*%Vinv
-      postvar <- lambda[1]*sigsq.eps*(K - lamKVinv%*%K)
+      scalar_lambda <- lambda_scalar(mod1 = modifier,
+                                     mod2 = modifier,
+                                     lambda = lambda,
+                                     data.comps = data.comps)
+      lamKVinv <- scalar_lambda*K%*%Vinv
+      postvar <- scalar_lambda*sigsq.eps*(K - lamKVinv%*%K)
       postmean <- lamKVinv %*% (ycont - X%*%beta)
     }
     

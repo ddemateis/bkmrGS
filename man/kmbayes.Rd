@@ -22,8 +22,9 @@ kmbayes(
   ztest = NULL,
   rmethod = "varying",
   est.h = FALSE,
-  modtest = F,
-  kernel.method = "one"
+  modtest = FALSE,
+  kernel.method = "one",
+  gs.tau = FALSE
 )
 }
 \arguments{
@@ -63,7 +64,9 @@ kmbayes(
 
 \item{modtest}{TRUE or FALSE: indicator for whether to perform selection on the modifier}
 
-\item{kernel.method}{When \code{modifier = "TRUE"}, use \code{kernel.method = "one"} for a one-kernel approach or \code{kernel.method = "two"} for a two-kernel approach}
+\item{kernel.method}{When \code{modifier = "TRUE"}, use \code{kernel.method = "one"} for the standard approach or \code{kernel.method = "two"} for a group-separable approach with a categorical modifier}
+
+\item{gs.tau}{TRUE or FALSE: indicator for whether to use group-specific tau parameters, only available for the group-separable method (\code{kernel.method = "two"})}
 }
 \value{
 an object of class "bkmrfit" (containing the posterior samples from the model fit), which has the associated methods:

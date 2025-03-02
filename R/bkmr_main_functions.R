@@ -21,14 +21,16 @@ makeVcomps <- function(r, lambda, Z, data.comps, modifier = NULL) {
                         mod_vec2 = modifier,
                         K = K)
     }
-    V <- diag(1, nrow(Z), nrow(Z)) + lambda[1]*K
-    if (data.comps$nlambda == 2) {
-      V <- V + lambda[2]*data.comps$crossTT
+    scalar_lambda <- lambda_scalar(mod1 = modifier, mod2 = modifier, lambda = lambda, data.comps = data.comps)
+    V <- diag(1, nrow(Z), nrow(Z)) + scalar_lambda*K
+    #for model with random intercept
+    if (data.comps$randint) { #changed from data.comps$nlambda == 2 upon GS-tau model implementation
+      V <- V + lambda[length(lambda)-1]*data.comps$crossTT
     }
     cholV <- chol(V)
     Vinv <- chol2inv(cholV)
     logdetVinv <- -2*sum(log(diag(cholV)))
-    Vcomps <- list(Vinv = Vinv, logdetVinv = logdetVinv)
+    Vcomps <- list(Vinv = Vinv, logdetVinv = logdetVinv, tmp = scalar_lambda*K, scalar_lambda = scalar_lambda)
   } else {## predictive process approach
     ## note: currently does not work with random intercept model
     nugget <- 0.001
@@ -53,12 +55,16 @@ makeVcomps <- function(r, lambda, Z, data.comps, modifier = NULL) {
                           K = K10)
     }
     Q <- K1 + diag(nugget, n1, n1)
-    R <- Q + lambda[1]*tcrossprod(K10)
+    scalar_lambda <- lambda_scalar(mod1 = modifier, 
+                                   mod2 = modifier, 
+                                   lamba = lambda,
+                                   data.comps = data.comps)
+    R <- Q + scalar_lambda*tcrossprod(K10)
     cholQ <- chol(Q)
     cholR <- chol(R)
     Qinv <- chol2inv(cholQ)
     Rinv <- chol2inv(cholR)
-    Vinv <- diag(1, n0, n0) - lambda[1]*t(K10) %*% Rinv %*% K10
+    Vinv <- diag(1, n0, n0) - scalar_lambda*t(K10) %*% Rinv %*% K10
     logdetVinv <- 2*sum(log(diag(cholQ))) - 2*sum(log(diag(cholR)))
     Vcomps <- list(Vinv = Vinv, logdetVinv = logdetVinv, cholR = cholR, Q = Q, K10 = K10, Qinv = Qinv, Rinv = Rinv)
   }
@@ -89,7 +95,8 @@ makeVcomps <- function(r, lambda, Z, data.comps, modifier = NULL) {
 #' @param rmethod for those predictors being forced into the \code{h} function, the method for sampling the \code{r[m]} values. Takes the value of 'varying' to allow separate \code{r[m]} for each predictor; 'equal' to force the same \code{r[m]} for each predictor; or 'fixed' to fix the \code{r[m]} to their starting values
 #' @param est.h TRUE or FALSE: indicator for whether to sample from the posterior distribution of the subject-specific effects h_i within the main sampler. This will slow down the model fitting.
 #' @param modtest TRUE or FALSE: indicator for whether to perform selection on the modifier
-#' @param kernel.method When \code{modifier = "TRUE"}, use \code{kernel.method = "one"} for a one-kernel approach or \code{kernel.method = "two"} for a two-kernel approach 
+#' @param kernel.method When \code{modifier = "TRUE"}, use \code{kernel.method = "one"} for the standard approach or \code{kernel.method = "two"} for a group-separable approach with a categorical modifier
+#' @param gs.tau TRUE or FALSE: indicator for whether to use group-specific tau parameters, only available for the group-separable method (\code{kernel.method = "two"})
 #' @return an object of class "bkmrfit" (containing the posterior samples from the model fit), which has the associated methods:
 #' \itemize{
 #'   \item \code{\link{print}} (i.e., \code{\link{print.bkmrfit}}) 
@@ -120,7 +127,8 @@ kmbayes <- function(y, Z, X = NULL,
                     Znew = NULL, starting.values = NULL, 
                     control.params = NULL, varsel = FALSE, groups = NULL,
                     knots = NULL, ztest = NULL, rmethod = "varying",
-                    est.h = FALSE, modtest = F, kernel.method = "one") {
+                    est.h = FALSE, modtest = FALSE, kernel.method = "one",
+                    gs.tau = FALSE) {
   #browser()
   missingX <- is.null(X)
   if (missingX) X <- matrix(0, length(y), 1)
@@ -145,6 +153,11 @@ kmbayes <- function(y, Z, X = NULL,
     }
   }else{
     stop("Invalid kernel.method. Only 'one' and 'two' are supported.")
+  }
+  
+  #make sure that gs.tau is FALSE when kernel.method is one
+  if(kernel.method == "one" & gs.tau){
+    stop("Group-specific tau method only available for group-separable model. Change gs.tau to FALSE or change kernel.method to 'two'.")
   }
   
   ##Argument check 1, required arguments without defaults
@@ -241,7 +254,11 @@ kmbayes <- function(y, Z, X = NULL,
     randint <- TRUE
     id <- as.numeric(as.factor(id))
     nid <- length(unique(id))
-    nlambda <- 2
+    if(gs.tau){
+      nlambda <- length(levels(as.factor(orig_modifier))) + 1
+    }else{
+      nlambda <- 2
+    }
     
     ## matrix that multiplies the random intercept vector
     TT <- matrix(0, length(id), nid)
@@ -252,10 +269,19 @@ kmbayes <- function(y, Z, X = NULL,
     rm(TT, nid)
   } else {
     randint <- FALSE
-    nlambda <- 1
+    if(gs.tau){
+      nlambda <- length(levels(as.factor(orig_modifier)))
+    }else{
+      nlambda <- 1
+    }
     crossTT <- 0
   }
-  data.comps <- list(randint = randint, nlambda = nlambda, crossTT = crossTT)
+  if(is.null(modifier)){
+    lvls <- NULL
+  }else{
+    lvls <- unique(apply(modifier, 1, paste, collapse = ""))
+  }
+  data.comps <- list(randint = randint, nlambda = nlambda, crossTT = crossTT, gs.tau = gs.tau, levels = lvls)
   if (!is.null(knots)) data.comps$knots <- knots
   rm(randint, nlambda, crossTT)
   
@@ -269,6 +295,14 @@ kmbayes <- function(y, Z, X = NULL,
                 acc.lambda = matrix(0, nsamp, data.comps$nlambda),
                 delta = matrix(1, nsamp, ncol(Z))
   )
+  if(gs.tau){
+    if(data.comps$randint){
+      colnames(chain$lambda) <- c(lvls, "int")
+    }else{
+      colnames(chain$lambda) <- lvls
+    }
+  }
+  
   if (varsel) {
     chain$acc.rdelta <- rep(0, nsamp)
     chain$move.type <- rep(0, nsamp)
