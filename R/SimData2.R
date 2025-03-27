@@ -71,7 +71,7 @@ SimData2 <- function (scenario = "none",
     }
     
   }
-  colnames(Z) <- paste0("z", 1:M)
+  
   
   #generate covariates
   if(sim_exp){
@@ -80,7 +80,14 @@ SimData2 <- function (scenario = "none",
   }else{
     X <- cbind(scale(dta$X1),
                scale(dta$X2),
-               scale(dta$X3))
+               scale(dta$X3),
+               scale(dta$X4),
+               scale(dta$X5),
+               scale(dta$X6),
+               scale(dta$X7),
+               scale(dta$X8),
+               scale(dta$X9),
+               scale(dta$X10))
   }
   
   #randomly generate covariate coefficients
@@ -137,6 +144,10 @@ SimData2 <- function (scenario = "none",
   #add noise to obtain response
   eps <- rnorm(n, sd = noise)
   y <- mu + eps
+  
+  #including other null exposures
+  Z <- cbind(Z, scale(dta$as_ln))
+  colnames(Z) <- paste0("z", 1:ncol(Z))
   
   #data structure
   dat <- list(n = n, 
