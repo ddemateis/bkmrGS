@@ -233,9 +233,14 @@ kmbayes <- function(y, Z, X = NULL,
     }
   }
   
+  if(is.null(colnames(Z))){
+    colnames(Z) <- paste0("z",1:ncol(Z))
+  }
+  
+  
   #add the modifier, if given, to the exposure matrix and covariate matrix
   if(!is.null(modifier)){
-    colnames(Z) <- paste0("z",1:ncol(Z))
+    
     if(kernel.method == "one"){ #add the modifier into the kernel for the one-kernel interaction approach
       Z <- cbind(Z, modifier) 
     }else{ #do not add the modifier in the kernel for the two-kernel approach
@@ -589,7 +594,7 @@ kmbayes <- function(y, Z, X = NULL,
     }else{
       chain$Z <- Z
     }
-    chain$modifier <- orig_modifier #added by DD
+    chain$modifier <- as.factor(orig_modifier) #added by DD
   }else{#added by DD
     chain$X <- X#added by DD
     chain$Z <- Z#added by DD
