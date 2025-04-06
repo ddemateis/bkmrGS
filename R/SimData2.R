@@ -79,7 +79,7 @@ SimData2 <- function (scenario = "none",
                3 * cos(Z[,2]) + 2 * rnorm(n))
   }else{
     X <- cbind(scale(dta$X1),
-               scale(dta$X2),
+               #scale(dta$X2),
                scale(dta$X3),
                scale(dta$X4),
                scale(dta$X5),
@@ -87,7 +87,8 @@ SimData2 <- function (scenario = "none",
                scale(dta$X7),
                scale(dta$X8),
                scale(dta$X9),
-               scale(dta$X10))
+               scale(dta$X10),
+               scale(dta$X11))
   }
   
   #randomly generate covariate coefficients
@@ -96,8 +97,10 @@ SimData2 <- function (scenario = "none",
   #construct exposure-response curve
   h <- c()
   if(scenario != "multi"){
-    med_vita <- median(data_standardized$vita)
-    modifier <- ifelse(data_standardized$vita < med_vita, "low", "high")
+    #med_vita <- median(data_standardized$vita)
+    modifier <- ifelse(round(dta$X2,1) == 0, 
+                       "male", 
+                       "female") #ifelse(data_standardized$vita < med_vita, "low", "high")
     for(i in 1:n){
       if(scenario == "none"){
         opt = 1
