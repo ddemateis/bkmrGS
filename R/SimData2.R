@@ -51,7 +51,7 @@ SimData2 <- function (scenario = "none",
   
   #sort by modifier
   if(scenario != "multi"){
-    dta <- dta[order(dta$vita),]
+    dta <- dta[order(dta$X2),]
   }else{
     dta <- dta[order(dta$X16),]
   }
@@ -99,8 +99,8 @@ SimData2 <- function (scenario = "none",
   if(scenario != "multi"){
     #med_vita <- median(data_standardized$vita)
     modifier <- ifelse(round(dta$X2,1) == 0, 
-                       "male", 
-                       "female") #ifelse(data_standardized$vita < med_vita, "low", "high")
+                       "low", 
+                       "high") #ifelse(data_standardized$vita < med_vita, "low", "high")
     for(i in 1:n){
       if(scenario == "none"){
         opt = 1
