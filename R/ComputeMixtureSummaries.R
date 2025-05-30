@@ -105,7 +105,8 @@ OverallRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
   
   if(!is.null(m.fixed) & fit$kernel.method == "one"){#BKMR-mod
     modnew <- matrix(rep(m.fixed, 2), ncol=1)
-    Z_for_quants <- Z
+    #Z_for_quants <- Z
+    Z_for_quants <- Z[modifier == m.fixed,] #4.23.25
   }else if(!is.null(m.fixed) & fit$kernel.method == "two"){#GS-BKMR
     modnew <- matrix(rep(m.fixed, 2), ncol=1)
     Z_for_quants <- Z[modifier == m.fixed,]
@@ -254,7 +255,8 @@ VarRiskSummary <- function (whichz = 1, fit, y = NULL, Z = NULL, X = NULL,
   
   if(!is.null(m.fixed) & fit$kernel.method == "one"){#BKMR-mod
     modnew <- matrix(rep(m.fixed, 2), ncol=1)
-    Z_for_quants <- Z
+    #Z_for_quants <- Z
+    Z_for_quants <- Z[modifier == m.fixed,] #4.23.25
   }else if(!is.null(m.fixed) & fit$kernel.method == "two"){#GS-BKMR
     modnew <- matrix(rep(m.fixed, 2), ncol=1)
     Z_for_quants <- Z[modifier == m.fixed,]
@@ -571,7 +573,7 @@ OverallIntSummary <- function(whichz = 1, fit, y = NULL, Z = NULL,
   #   modifier <- as.matrix(model.matrix(~modifier)[,-1])
   # }
   
-  #modifier
+  #modifier, modnew.2 - modnew.1
   modnew.1 <-rep(mod.diff[1], 2)
   modnew.2 <-rep(mod.diff[2], 2)
   
@@ -581,8 +583,9 @@ OverallIntSummary <- function(whichz = 1, fit, y = NULL, Z = NULL,
                             modifier = modifier)
 
   #differences, regardless of modifier: h(z_1^{qs}, z_2^{qs}, \dots, z_M^{qs}) - h(z_1^{q}, z_2^{q}, \dots, z_M^{q})
-  point2 <- apply(Z_for_quants, 2, quantile, q.fixed)
-  point1 <- apply(Z_for_quants, 2, quantile, qs)
+  #point2 - point1
+  point1 <- apply(Z_for_quants, 2, quantile, q.fixed) #I had point2 as point1 previously, which is wrong
+  point2 <- apply(Z_for_quants, 2, quantile, qs)
   newz.q1 <- newz.q2 <- rbind(point1, point2) 
   
   if (method %in% c("approx", "exact", "fullpost")) {
