@@ -368,29 +368,3 @@ newh.update <- function(Z, Znew, mod_new, Vcomps, lambda, sigsq.eps, r, y, X, be
 
 	hsamp
 }
-
-#function not used anywhere in the package
-## function to obtain posterior samples of h(znew) from fit of Bayesian kernel machine regression
-predz.samps <- function(fit, Znew, verbose = TRUE, modifier = NULL) {
-	if(is.null(dim(Znew))) Znew <- matrix(Znew, nrow=1)
-	if(inherits(Znew, "data.frame")) Znew <- data.matrix(Znew)
-	Z <- fit$Z
-	if(ncol(Z) != ncol(Znew)) {
-		stop("Znew must have the same number of columns as Z")
-	}
-	
-	kernel.method <- fit$kernel.method
-	if(kernel.method == "one"){
-	  kern_modifier <- NULL
-	}else if(kernel.method == "two"){
-	  kern_modifier <- fit$modifier
-	}
-
-	hnew.samps <- sapply(1:fit$nsamp, function(s) {
-		if(s%%(fit$nsamp/10)==0 & verbose) print(s)
-		newh.update(Z = Z, Znew = Znew, Vcomps = NULL, lambda = fit$lambda[s], sigsq.eps = fit$sigsq.eps[s], r = fit$r[s,], y = fit$y, X = fit$X, beta = fit$beta[s,], data.comps = fit$data.comps, modifier = kern_modifier)
-	})
-	rownames(hnew.samps) <- rownames(Znew)
-	t(hnew.samps)
-}
-
