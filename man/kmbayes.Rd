@@ -24,7 +24,8 @@ kmbayes(
   est.h = FALSE,
   modtest = FALSE,
   kernel.method = "one",
-  gs.tau = FALSE
+  gs.tau = FALSE,
+  gs.sig = FALSE
 )
 }
 \arguments{
@@ -67,6 +68,8 @@ kmbayes(
 \item{kernel.method}{When \code{modifier = "TRUE"}, use \code{kernel.method = "one"} for the standard approach or \code{kernel.method = "two"} for a group-separable approach with a categorical modifier}
 
 \item{gs.tau}{TRUE or FALSE: indicator for whether to use group-specific tau parameters, only available for the group-separable method (\code{kernel.method = "two"})}
+
+\item{gs.sig}{TRUE or FALSE: indicator for whether to estimate separate error variance terms for each group. Only available for the group-separable method (\code{kernel.method = "two"})}
 }
 \value{
 an object of class "bkmrfit" (containing the posterior samples from the model fit), which has the associated methods:

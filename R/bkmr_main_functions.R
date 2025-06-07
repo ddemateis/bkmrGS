@@ -97,6 +97,7 @@ makeVcomps <- function(r, lambda, Z, data.comps, modifier = NULL) {
 #' @param modtest TRUE or FALSE: indicator for whether to perform selection on the modifier
 #' @param kernel.method When \code{modifier = "TRUE"}, use \code{kernel.method = "one"} for the standard approach or \code{kernel.method = "two"} for a group-separable approach with a categorical modifier
 #' @param gs.tau TRUE or FALSE: indicator for whether to use group-specific tau parameters, only available for the group-separable method (\code{kernel.method = "two"})
+#' @param gs.sig TRUE or FALSE: indicator for whether to estimate separate error variance terms for each group. Only available for the group-separable method (\code{kernel.method = "two"})
 #' @return an object of class "bkmrfit" (containing the posterior samples from the model fit), which has the associated methods:
 #' \itemize{
 #'   \item \code{\link{print}} (i.e., \code{\link{print.bkmrfit}}) 
@@ -128,7 +129,7 @@ kmbayes <- function(y, Z, X = NULL,
                     control.params = NULL, varsel = FALSE, groups = NULL,
                     knots = NULL, ztest = NULL, rmethod = "varying",
                     est.h = FALSE, modtest = FALSE, kernel.method = "one",
-                    gs.tau = FALSE) {
+                    gs.tau = FALSE, gs.sig = FALSE) {
   #browser()
   missingX <- is.null(X)
   if (missingX) X <- matrix(0, length(y), 1)
@@ -158,6 +159,11 @@ kmbayes <- function(y, Z, X = NULL,
   #make sure that gs.tau is FALSE when kernel.method is one
   if(kernel.method == "one" & gs.tau){
     stop("Group-specific tau method only available for group-separable model. Change gs.tau to FALSE or change kernel.method to 'two'.")
+  }
+  
+  #make sure that gs.sig is FALSE when kernel.method is one
+  if(kernel.method == "one" & gs.sig){
+    stop("Group-specific residual variance method only available for group-separable model. Change gs.sig to FALSE or change kernel.method to 'two'.")
   }
   
   ##Argument check 1, required arguments without defaults
@@ -252,8 +258,6 @@ kmbayes <- function(y, Z, X = NULL,
     X <- cbind(X, modifier) 
   }
   
-  
-  
   ## start JB code
   if (!is.null(id)) { ## for random intercept model
     randint <- TRUE
@@ -281,12 +285,22 @@ kmbayes <- function(y, Z, X = NULL,
     }
     crossTT <- 0
   }
+  
+  #set levels of the modifier
   if(is.null(modifier)){
     lvls <- NULL
   }else{
     lvls <- unique(apply(modifier, 1, paste, collapse = ""))
   }
-  data.comps <- list(randint = randint, nlambda = nlambda, crossTT = crossTT, gs.tau = gs.tau, levels = lvls)
+  
+  #set the number of residual variance terms
+  if(gs.sig){
+    n.sigsq.eps <- length(lvls)
+  }else{
+    n.sigsq.eps <- 1
+  }
+  
+  data.comps <- list(randint = randint, nlambda = nlambda, crossTT = crossTT, gs.tau = gs.tau, levels = lvls, gs.sig = gs.sig)
   if (!is.null(knots)) data.comps$knots <- knots
   rm(randint, nlambda, crossTT)
   
@@ -294,7 +308,7 @@ kmbayes <- function(y, Z, X = NULL,
   chain <- list(h.hat = matrix(0, nsamp, nrow(Z)),
                 beta = matrix(0, nsamp, ncol(X)),
                 lambda = matrix(NA, nsamp, data.comps$nlambda),
-                sigsq.eps = rep(NA, nsamp),
+                sigsq.eps = matrix(NA, nsamp, n.sigsq.eps),
                 r = matrix(NA, nsamp, ncol(Z)),
                 acc.r = matrix(0, nsamp, ncol(Z)),
                 acc.lambda = matrix(0, nsamp, data.comps$nlambda),
@@ -306,6 +320,9 @@ kmbayes <- function(y, Z, X = NULL,
     }else{
       colnames(chain$lambda) <- lvls
     }
+  }
+  if(gs.sig){
+    colnames(chain$lambda) <- lvls
   }
   
   if (varsel) {
@@ -453,7 +470,7 @@ kmbayes <- function(y, Z, X = NULL,
   chain$h.hat[1, ] <- starting.values$h.hat
   chain$beta[1, ] <- starting.values$beta
   chain$lambda[1, ] <- starting.values$lambda
-  chain$sigsq.eps[1] <- starting.values$sigsq.eps
+  chain$sigsq.eps[1, ] <- rep(starting.values$sigsq.eps, n.sigsq.eps)
   chain$r[1, ] <- starting.values$r
   if (varsel) {
     chain$delta[1,ztest] <- starting.values$delta
@@ -497,18 +514,37 @@ kmbayes <- function(y, Z, X = NULL,
     
     ## beta
     if (!missingX) {
-      chain$beta[s,] <- beta.update(X = X, Vinv = Vcomps$Vinv, y = ycont, sigsq.eps = chain$sigsq.eps[s - 1])
+      #gs.sig method: make sigsq.eps a vector (not matrix) of length n
+      if(gs.sig){
+        sigs <- chain$sigsq.eps[s - 1, ]
+        names(sigs) <- lvls
+        sigsq.eps.betaup <- sigs[apply(modifier, 1, paste, collapse = "")]
+      }else{
+        sigsq.eps.betaup <- rep(chain$sigsq.eps[s - 1, ], nrow(X)) #if single sigsq.eps, make vector of the same value
+      }
+      chain$beta[s,] <- beta.update(X = X, Vinv = Vcomps$Vinv, y = ycont, sigsq.eps = sigsq.eps.betaup)
     }
       
     ## \sigma_\epsilon^2
     if (family == "gaussian") {
-      chain$sigsq.eps[s] <- sigsq.eps.update(y = ycont, X = X, beta = chain$beta[s,], Vinv = Vcomps$Vinv, a.eps = control.params$a.sigsq, b.eps = control.params$b.sigsq)
+      if(n.sigsq.eps==1){ #gs.sig == FALSE
+        chain$sigsq.eps[s,1] <- sigsq.eps.update(y = ycont, X = X, beta = chain$beta[s,], Vinv = Vcomps$Vinv, a.eps = control.params$a.sigsq, b.eps = control.params$b.sigsq)
+      }else{ #gs.sig method: call this only on the data for group p
+        for(p in 1:n.sigsq.eps){
+          grp <- lvls[p]
+          grp_idx <- which(apply(modifier, 1, paste, collapse = "")==grp)
+          grp_coords <- expand.grid(grp_idx,grp_idx)
+          Vinv_grp <- matrix(Vcomps$Vinv[as.matrix(grp_coords)], ncol = length(grp_idx))
+          chain$sigsq.eps[s,p] <- sigsq.eps.update(y = ycont[grp_idx], X = X[grp_idx,], beta = chain$beta[s,], Vinv = Vinv_grp, a.eps = control.params$a.sigsq, b.eps = control.params$b.sigsq)
+        }
+      }
     }
     
     ## lambda
+    #gs.sig method: only pass data and sigsq.eps for each group
     lambdaSim <- chain$lambda[s - 1,]
     for (comp in 1:data.comps$nlambda) {
-      varcomps <- lambda.update(r = chain$r[s - 1,], delta = chain$delta[s - 1,], lambda = lambdaSim, whichcomp = comp, y = ycont, X = X, Z = Z, beta = chain$beta[s,], sigsq.eps = chain$sigsq.eps[s], Vcomps = Vcomps, data.comps = data.comps, control.params = control.params, modifier = kern_modifier)
+      varcomps <- lambda.update(r = chain$r[s - 1,], delta = chain$delta[s - 1,], lambda = lambdaSim, whichcomp = comp, y = ycont, X = X, Z = Z, beta = chain$beta[s,], sigsq.eps = chain$sigsq.eps[s, ], Vcomps = Vcomps, data.comps = data.comps, control.params = control.params, modifier = kern_modifier)
       lambdaSim <- varcomps$lambda
       if (varcomps$acc) {
         Vcomps <- varcomps$Vcomps
@@ -522,7 +558,7 @@ kmbayes <- function(y, Z, X = NULL,
     comp <- which(!1:ncol(Z) %in% ztest)
     if (length(comp) != 0) {
       if (rmethod == "equal") { ## common r for those variables not being selected
-        varcomps <- r.update(r = rSim, whichcomp = comp, delta = chain$delta[s - 1,], lambda = chain$lambda[s,], y = ycont, X = X, beta = chain$beta[s,], sigsq.eps = chain$sigsq.eps[s], Vcomps = Vcomps, Z = Z, data.comps = data.comps, control.params = control.params, rprior.logdens = rprior.logdens, rprop.gen1 = rprop.gen1, rprop.logdens1 = rprop.logdens1, rprop.gen2 = rprop.gen2, rprop.logdens2 = rprop.logdens2, rprop.gen = rprop.gen, rprop.logdens = rprop.logdens, modifier = kern_modifier)
+        varcomps <- r.update(r = rSim, whichcomp = comp, delta = chain$delta[s - 1,], lambda = chain$lambda[s,], y = ycont, X = X, beta = chain$beta[s,], sigsq.eps = chain$sigsq.eps[s, ], Vcomps = Vcomps, Z = Z, data.comps = data.comps, control.params = control.params, rprior.logdens = rprior.logdens, rprop.gen1 = rprop.gen1, rprop.logdens1 = rprop.logdens1, rprop.gen2 = rprop.gen2, rprop.logdens2 = rprop.logdens2, rprop.gen = rprop.gen, rprop.logdens = rprop.logdens, modifier = kern_modifier)
         rSim <- varcomps$r
         if (varcomps$acc) {
           Vcomps <- varcomps$Vcomps
@@ -530,7 +566,7 @@ kmbayes <- function(y, Z, X = NULL,
         }
       } else if (rmethod == "varying") { ## allow a different r_m
         for (whichr in comp) {
-          varcomps <- r.update(r = rSim, whichcomp = whichr, delta = chain$delta[s - 1,], lambda = chain$lambda[s,], y = ycont, X = X, beta = chain$beta[s,], sigsq.eps = chain$sigsq.eps[s], Vcomps = Vcomps, Z = Z, data.comps = data.comps, control.params = control.params, rprior.logdens = rprior.logdens, rprop.gen1 = rprop.gen1, rprop.logdens1 = rprop.logdens1, rprop.gen2 = rprop.gen2, rprop.logdens2 = rprop.logdens2, rprop.gen = rprop.gen, rprop.logdens = rprop.logdens, modifier = kern_modifier)
+          varcomps <- r.update(r = rSim, whichcomp = whichr, delta = chain$delta[s - 1,], lambda = chain$lambda[s,], y = ycont, X = X, beta = chain$beta[s,], sigsq.eps = chain$sigsq.eps[s, ], Vcomps = Vcomps, Z = Z, data.comps = data.comps, control.params = control.params, rprior.logdens = rprior.logdens, rprop.gen1 = rprop.gen1, rprop.logdens1 = rprop.logdens1, rprop.gen2 = rprop.gen2, rprop.logdens2 = rprop.logdens2, rprop.gen = rprop.gen, rprop.logdens = rprop.logdens, modifier = kern_modifier)
           rSim <- varcomps$r
           if (varcomps$acc) {
             Vcomps <- varcomps$Vcomps
@@ -541,7 +577,7 @@ kmbayes <- function(y, Z, X = NULL,
     }
     ## for those variables being selected: joint posterior of (r,delta)
     if (varsel) {
-      varcomps <- rdelta.update(r = rSim, delta = chain$delta[s - 1,], lambda = chain$lambda[s,], y = ycont, X = X, beta = chain$beta[s,], sigsq.eps = chain$sigsq.eps[s], Vcomps = Vcomps, Z = Z, ztest = ztest, data.comps = data.comps, control.params = control.params, rprior.logdens = rprior.logdens, rprop.gen1 = rprop.gen1, rprop.logdens1 = rprop.logdens1, rprop.gen2 = rprop.gen2, rprop.logdens2 = rprop.logdens2, rprop.gen = rprop.gen, rprop.logdens = rprop.logdens)
+      varcomps <- rdelta.update(r = rSim, delta = chain$delta[s - 1,], lambda = chain$lambda[s,], y = ycont, X = X, beta = chain$beta[s,], sigsq.eps = chain$sigsq.eps[s, ], Vcomps = Vcomps, Z = Z, ztest = ztest, data.comps = data.comps, control.params = control.params, rprior.logdens = rprior.logdens, rprop.gen1 = rprop.gen1, rprop.logdens1 = rprop.logdens1, rprop.gen2 = rprop.gen2, rprop.logdens2 = rprop.logdens2, rprop.gen = rprop.gen, rprop.logdens = rprop.logdens)
       chain$delta[s,] <- varcomps$delta
       rSim <- varcomps$r
       chain$move.type[s] <- varcomps$move.type
@@ -556,7 +592,7 @@ kmbayes <- function(y, Z, X = NULL,
     ## generate posterior sample of h(z) from its posterior P(h | beta, sigsq.eps, lambda, r, y)
     
     if (est.h) {
-      hcomps <- h.update(lambda = chain$lambda[s,], Vcomps = Vcomps, sigsq.eps = chain$sigsq.eps[s], y = ycont, X = X, beta = chain$beta[s,], r = chain$r[s,], Z = Z, data.comps = data.comps, modifier = modifier, kernel.method = kernel.method)
+      hcomps <- h.update(lambda = chain$lambda[s,], Vcomps = Vcomps, sigsq.eps = chain$sigsq.eps[s, ], y = ycont, X = X, beta = chain$beta[s,], r = chain$r[s,], Z = Z, data.comps = data.comps, modifier = modifier, kernel.method = kernel.method)
       chain$h.hat[s,] <- hcomps$hsamp
       if (!is.null(hcomps$hsamp.star)) { ## GPP
         Vcomps$hsamp.star <- hcomps$hsamp.star
@@ -568,7 +604,7 @@ kmbayes <- function(y, Z, X = NULL,
     ## generate posterior samples of h(Znew) from its posterior P(hnew | beta, sigsq.eps, lambda, r, y)
     
     if (!is.null(Znew)) {
-      chain$hnew[s,] <- newh.update(Z = Z, Znew = Znew, mod_new = mod_new, Vcomps = Vcomps, lambda = chain$lambda[s,], sigsq.eps = chain$sigsq.eps[s], r = chain$r[s,], y = ycont, X = X, beta = chain$beta[s,], data.comps = data.comps, modifier = modifier, kernel.method = kernel.method)
+      chain$hnew[s,] <- newh.update(Z = Z, Znew = Znew, mod_new = mod_new, Vcomps = Vcomps, lambda = chain$lambda[s,], sigsq.eps = chain$sigsq.eps[s, ], r = chain$r[s,], y = ycont, X = X, beta = chain$beta[s,], data.comps = data.comps, modifier = modifier, kernel.method = kernel.method)
     }
     
     ###################################################
@@ -606,6 +642,8 @@ kmbayes <- function(y, Z, X = NULL,
   if (!is.null(groups)) chain$groups <- groups
   chain$varsel <- varsel
   chain$kernel.method <- kernel.method
+  chain$gs.tau <- gs.tau
+  chain$gs.sig <- gs.sig
   class(chain) <- c("bkmrfit", class(chain))
   chain
 }

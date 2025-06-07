@@ -64,6 +64,10 @@ ComputePostmeanHnew.approx <- function(fit, y = NULL, Z = NULL,
     if (is.null(modifier)) modifier <- fit$modifier
   }
   
+  if(fit$gs.sig){
+    stop("Approximation method not supported for group-specific residual variance. Set gs.sig = FALSE to use the approximation method.")
+  }
+  
   #convert modifier to factor and construct contrast matrix
   if(!is.null(modifier)){
     orig_modifier <- modifier
@@ -147,7 +151,14 @@ ComputePostmeanHnew.approx <- function(fit, y = NULL, Z = NULL,
       scalar_lambda_1 <- scalar_lambda
     }
     lamK10Vinv <- scalar_lambda_10*Kmat10 %*% Vinv
-    postvar <- scalar_lambda_1*sigsq.eps*(Kmat1 - lamK10Vinv %*% t(Kmat10))
+    if(data.comps$gs.sig){
+      sigs <- sigsq.eps
+      names(sigs) <- data.comps$levels
+      sigsq.eps.h <- sigs[apply(mod_new, 1, paste, collapse = "")]
+    }else{
+      sigsq.eps.h <- rep(sigsq.eps, nrow(X)) #if single sigsq.eps, make vector of the same value
+    }
+    postvar <- scalar_lambda_1*(sigsq.eps.h*(Kmat1 - lamK10Vinv %*% t(Kmat10)))
     postmean <- lamK10Vinv %*% (ycont - X%*%beta)
     # } else {
     # stop("GPP not yet implemented")
@@ -158,7 +169,7 @@ ComputePostmeanHnew.approx <- function(fit, y = NULL, Z = NULL,
                                    lambda = lambda,
                                    data.comps = data.comps)
     lamKVinv <- scalar_lambda*K%*%Vinv
-    postvar <- scalar_lambda*sigsq.eps*(K - lamKVinv%*%K)
+    postvar <- scalar_lambda*(sigsq.eps*(K - lamKVinv%*%K))
     postmean <- lamKVinv %*% (ycont - X%*%beta)
   }
   ret <- list(postmean = drop(postmean), postvar = postvar)
@@ -243,7 +254,7 @@ ComputePostmeanHnew.exact <- function(fit, y = NULL, Z = NULL, X = NULL, modifie
     s <- sel[i]
     beta <- fit$beta[s, ]
     lambda <- fit$lambda[s, ]
-    sigsq.eps <- fit$sigsq.eps[s]
+    sigsq.eps <- fit$sigsq.eps[s,]
     r <- fit$r[s, ]
     
     if (family == "gaussian") {
@@ -297,7 +308,14 @@ ComputePostmeanHnew.exact <- function(fit, y = NULL, Z = NULL, X = NULL, modifie
         scalar_lambda_1 <- scalar_lambda
       }
       lamK10Vinv <- scalar_lambda_10*Kmat10 %*% Vinv
-      postvar <- scalar_lambda_1*sigsq.eps*(Kmat1 - lamK10Vinv %*% t(Kmat10))
+      if(data.comps$gs.sig){
+        sigs <- sigsq.eps
+        names(sigs) <- data.comps$levels
+        sigsq.eps.h <- sigs[apply(mod_new, 1, paste, collapse = "")]
+      }else{
+        sigsq.eps.h <- rep(sigsq.eps, nrow(Znew)) #if single sigsq.eps, make vector of the same value
+      }
+      postvar <- scalar_lambda_1*(sigsq.eps.h*(Kmat1 - lamK10Vinv %*% t(Kmat10)))
       postmean <- lamK10Vinv %*% (ycont - X%*%beta)
       # } else {
       # stop("GPP not yet implemented")
@@ -308,7 +326,14 @@ ComputePostmeanHnew.exact <- function(fit, y = NULL, Z = NULL, X = NULL, modifie
                                      lambda = lambda,
                                      data.comps = data.comps)
       lamKVinv <- scalar_lambda*K%*%Vinv
-      postvar <- scalar_lambda*sigsq.eps*(K - lamKVinv%*%K)
+      if(data.comps$gs.sig){
+        sigs <- sigsq.eps
+        names(sigs) <- data.comps$levels
+        sigsq.eps.h <- sigs[apply(modifier, 1, paste, collapse = "")]
+      }else{
+        sigsq.eps.h <- rep(sigsq.eps, nrow(X)) #if single sigsq.eps, make vector of the same value
+      }
+      postvar <- scalar_lambda*(sigsq.eps.h*(K - lamKVinv%*%K))
       postmean <- lamKVinv %*% (ycont - X%*%beta)
     }
     

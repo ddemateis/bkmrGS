@@ -38,9 +38,8 @@ SimData2 <- function (scenario = "none",
                       mod_DGM = T,
                       sim_exp = F){
   
-  
   #data_standardized is lazy loaded
-  dta <- data_standardized
+  dta <- data_standardized[-c(50),] #50 is delivery type, 253 is pica
   n <- nrow(dta)
   
   if(scenario == "scaled3"){
@@ -72,23 +71,46 @@ SimData2 <- function (scenario = "none",
     
   }
   
-  
   #generate covariates
   if(sim_exp){
     X <- cbind(3 * cos(Z[,1]) + 2 * rnorm(n),
                3 * cos(Z[,2]) + 2 * rnorm(n))
   }else{
-    X <- cbind(scale(dta$X1),
-               #scale(dta$X2),
-               scale(dta$X3),
-               scale(dta$X4),
-               scale(dta$X5),
-               scale(dta$X6),
-               scale(dta$X7),
-               scale(dta$X8),
-               scale(dta$X9),
-               scale(dta$X10),
-               scale(dta$X11))
+    X_full <- data.frame(X1 = dta$X1, #continuous: visit age
+                         X2 = as.factor(dta$X2), #categorical: child sex 
+                         X3 = dta$X3, #continuous: gestation weeks, 
+                         X4 = as.factor(dta$X4), #categorical: delivery type, 2 categories
+                         X5 = as.factor(case_when(round(dta$X5, 2) == 0.03 ~ "birth_order_1",
+                                                  round(dta$X5, 2) == 0.05 ~ "birth_order_2",
+                                                  round(dta$X5, 2) >= 0.08 ~ "birth_order_3")), #categorical: birth order, originally 6 categories, we made 3 by grouping the last 4 together
+                         #X6 = data_standardized$X6, #continuous: drink water cups, 
+                         #X7 = as.factor(data_standardized$X7), #categorical: hospital child (y/n),
+                         #X8 = as.factor(data_standardized$X8), #categorical: pica (?) (y/n),
+                         X9 = as.factor(case_when(round(dta$X9, 2) <= 0.02 ~ "ed_1", #ed_1 contains the 0 group as well as the next lowest level of ed
+                                                  round(dta$X9, 2) == 0.04 ~ "ed_2",
+                                                  round(dta$X9, 2) >= 0.06 ~ "ed_3")), #categorical: education for birthing parent,
+                         X10 = as.factor(case_when(round(dta$X10, 2) <= 0.02 ~ "ed_1", #ed_1 contains the 0 group as well as the next lowest level of ed
+                                                   round(dta$X10, 2) == 0.04 ~ "ed_2",
+                                                   round(dta$X10, 2) >= 0.07 ~ "ed_3")), #categorical: education for non-birthing parent,
+                         X11 = as.factor(dta$X11), #categorical: smoke environment,
+                         X12 = dta$X12, #continuous: HOME score (emotional), 
+                         X13 = dta$X13, #continuous: HOME score (avoid), 
+                         X14 = dta$X14, #continuous: HOME score (careg), 
+                         X15 = dta$X15, #continuous: HOME score (env), 
+                         X16 = dta$X16, #continuous: HOME score (play), 
+                         X17 = dta$X17, #continuous: HOME score (stim), 
+                         X18 = dta$X18 #continuous: child estimate daily energy intake, 
+                         #X19 = data_standardized$X19, #continuous: baseline lead, 
+                         #X20 = data_standardized$X20, #continuous: baseline manganese, 
+                         #X21 = data_standardized$X21 #continuous: baseline arsenic, 
+    )
+    if(scenario != "multi"){
+      X_full <- X_full[,-c(2)] #remove X12 because it is the modifier and is included as a covariate in the model by default
+    }else{
+      X_full <- X_full[,-c(13)] #remove X16 because it is the modifier and is included as a covariate in the model by default
+    }
+    
+    X <- model.matrix(~., data=X_full)[,-1]
   }
   
   #randomly generate covariate coefficients

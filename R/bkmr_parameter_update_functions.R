@@ -1,10 +1,10 @@
 beta.update <- function(X, Vinv, y, sigsq.eps) {
 	XVinv <- crossprod(X, Vinv)
-	Vbeta <- chol2inv(chol(XVinv %*% X))
+	Vbeta <- chol2inv(chol(XVinv %*% diag((sigsq.eps)^(-1)) %*% X)) #when sigsq.eps could not vary by group: 	Vbeta <- chol2inv(chol(XVinv %*% X))
 	cholVbeta <- chol(Vbeta)
-	betahat <- Vbeta %*% XVinv %*% y
+	betahat <- Vbeta %*% XVinv %*% diag((sigsq.eps)^(-1)) %*% y #when sigsq.eps could not vary by group: 	betahat <- Vbeta %*% XVinv %*% y
 	n01 <- rnorm(ncol(X))
-	betahat + crossprod(sqrt(sigsq.eps)*cholVbeta, n01)
+	betahat + crossprod(cholVbeta, n01) #when sigsq.eps could not vary by group: 	betahat + crossprod(sqrt(sigsq.eps)*cholVbeta, n01)
 }
 
 sigsq.eps.update <- function(y, X, beta, Vinv, a.eps=1e-3, b.eps=1e-3) {
@@ -219,7 +219,14 @@ MHstep <- function(r, lambda, lambda.star, r.star, delta, delta.star, y, X, Z, b
 	## compute log M-H ratio
 	Vcomps.star <- makeVcomps(r.star, lambda.star, Z, data.comps, modifier = modifier)
 	mu <- y - X%*%beta
-	diffliks <- 1/2*Vcomps.star$logdetVinv - 1/2*Vcomps$logdetVinv - 1/2/sigsq.eps*crossprod(mu, Vcomps.star$Vinv - Vcomps$Vinv)%*%mu
+	if(data.comps$gs.sig){
+	  sigs <- sigsq.eps
+	  names(sigs) <- data.comps$levels
+	  sigsq.eps.mh <- sigs[apply(modifier, 1, paste, collapse = "")]
+	}else{
+	  sigsq.eps.mh <- rep(sigsq.eps, nrow(X)) #if single sigsq.eps, make vector of the same value
+	}
+	diffliks <- 1/2*Vcomps.star$logdetVinv - 1/2*Vcomps$logdetVinv - 1/2*crossprod(mu, Vcomps.star$Vinv - Vcomps$Vinv)%*% diag((sigsq.eps.mh)^(-1))%*%mu #added %*% diag((sigsq.eps)^(-1)) to generalize for both group-specific and one error variance
 	logMHratio <- diffliks + diffpriors + negdifflogproposal
 	logalpha <- min(0,logMHratio)
 
@@ -264,7 +271,14 @@ h.update <- function(lambda, Vcomps, sigsq.eps, y, X, beta, r, Z, data.comps, mo
 		lamKVinv <- scalar_lambda*K%*%Vinv
 		h.postmean <- lamKVinv%*%(y-X%*%beta)
 		##h.postvar <- sigsq.eps*lamKVinv
-		h.postvar <- sigsq.eps*scalar_lambda*(K - lamKVinv%*%K)
+		if(gs.sig){
+		  sigs <- sigsq.eps
+		  names(sigs) <- lvls
+		  sigsq.eps.h <- sigs[apply(modifier, 1, paste, collapse = "")]
+		}else{
+		  sigsq.eps.h <- rep(sigsq.eps, nrow(X)) #if single sigsq.eps, make vector of the same value
+		}
+		h.postvar <- scalar_lambda* (sigsq.eps.h*(K - lamKVinv%*%K))
 		h.postvar.sqrt <- try(chol(h.postvar), silent=TRUE)
 		if(inherits(h.postvar.sqrt, "try-error")) {
 			sigsvd <- svd(h.postvar)
@@ -330,7 +344,14 @@ newh.update <- function(Z, Znew, mod_new, Vcomps, lambda, sigsq.eps, r, y, X, be
 		                               mod2 = mod_new,
 		                               lambda = lambda,
 		                               data.comps = data.comps)
-		Sigma.hnew <- scalar_lambda*sigsq.eps*(Kmat1 - lamK10Vinv %*% t(Kmat10))
+		if(data.comps$gs.sig){
+		  sigs <- sigsq.eps
+		  names(sigs) <- data.comps$levels
+		  sigsq.eps.h <- sigs[apply(mod_new, 1, paste, collapse = "")]
+		}else{
+		  sigsq.eps.h <- rep(sigsq.eps, nrow(Znew)) #if single sigsq.eps, make vector of the same value
+		}
+		Sigma.hnew <- scalar_lambda*(sigsq.eps.h*(Kmat1 - lamK10Vinv %*% t(Kmat10)))
 		mu.hnew <- lamK10Vinv %*% (y - X%*%beta)
 		root.Sigma.hnew <- try(chol(Sigma.hnew), silent=TRUE)
 		if(inherits(root.Sigma.hnew, "try-error")) {

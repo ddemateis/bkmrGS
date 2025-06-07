@@ -125,9 +125,9 @@ SamplePred <- function(fit, Znew = NULL, Xnew = NULL, mod_new = NULL,
       ycont <- fit$ystar[s, ]
     }
     if (!is.null(Znew)) { #Z and X d
-      hsamp <- newh.update(Z = Z, Znew = Znew, mod_new = mod_new, Vcomps = NULL, lambda = lambda[s, ], sigsq.eps = sigsq.eps[s], r = r[s, ], y = ycont, X = X, beta = beta.samp, data.comps = data.comps, modifier = modifier, kernel.method = kernel.method)  
+      hsamp <- newh.update(Z = Z, Znew = Znew, mod_new = mod_new, Vcomps = NULL, lambda = lambda[s, ], sigsq.eps = sigsq.eps[s, ], r = r[s, ], y = ycont, X = X, beta = beta.samp, data.comps = data.comps, modifier = modifier, kernel.method = kernel.method)  
     } else { 
-      hsamp <- h.update(lambda = lambda[s, ], Vcomps = NULL, sigsq.eps = sigsq.eps[s], y = ycont, X = X, beta = beta.samp, r = r[s, ], Z = Z, data.comps = data.comps, modifier = modifier, kernel.method = kernel.method)$hsamp
+      hsamp <- h.update(lambda = lambda[s, ], Vcomps = NULL, sigsq.eps = sigsq.eps[s, ], y = ycont, X = X, beta = beta.samp, r = r[s, ], Z = Z, data.comps = data.comps, modifier = modifier, kernel.method = kernel.method)$hsamp
     }
     
     Xbeta <- drop(Xnew %*% beta.samp)
