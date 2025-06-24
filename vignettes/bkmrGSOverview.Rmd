@@ -1,0 +1,149 @@
+---
+title: "my-vignette"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{my-vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Preamble
+
+# Installation
+
+The latest version of this package on GitHub can be downloaded and installed by
+
+`install_github("ddemateis/bkmrGS")`
+
+
+Then the package can be loaded by
+
+```{r}
+library(bkmrGS)
+```
+
+# Methodology and Applications
+
+Paper with methods submitted to American Journal of Epidemiology.
+
+# Functions in the package
+
+## The function `kmbayes()`
+
+## The function `SamplePred()`
+
+## The function `PredictorResponseUnivar()`
+
+## The function `OverallIntSummaries()`
+
+## The function `OverallRiskSummaries()`
+
+## The function `SingVarIntSummaries()`
+
+## The function `SingVarRiskSummaries()`
+
+# Example
+
+## Model Fitting
+
+Using the example data set in the package, fit the model using the `kmbayes()` function. First load the data set:
+
+```{r eval=F}
+data("data_standardized")
+str(data_standardized)
+```
+
+Set a response, exposure matrix, modifier, and covariates matrix. 
+
+to do: make data set in the package the processed data set
+
+```{r eval=F}
+y <- data_standardized$y
+Z <- cbind("Lead" = data_standardized$pb_ln,
+           "Arsenic" = data_standardized$as_ln,
+           "Manganese" = data_standardized$mn_ln)
+modifier <- ifelse(data_standardized$X2 < 0.04, "male", "female")
+```
+
+
+This data set is from the Lui et al. 2019 paper. Now fit the model with the `kmbayes()` function. The following example uses 100 MCMC iterations, but it is important to use ample MCMC iterations and check model convergence. 
+
+to do: add X, make kernel.method = "two" and gs.tau = TRUE the default
+
+```{r eval=F}
+fitkm <- kmbayes(y = data_standardized$y, #response
+                 Z = Z, #exposure
+                 modifier = modifier,
+                 iter = 100, #MCMC iterations
+                 verbose = FALSE, #controls output during fitting
+                 kernel.method = "two",
+                 gs.tau = TRUE)
+```
+
+We can quickly look at the object by printing it:
+
+```{r eval=F}
+fitkm
+```
+
+Next, check the convergence of model parameters with the following trace plots. 
+
+to do: fix trace plot function
+
+```{r eval=F}
+TracePlot(fitkm)
+```
+
+
+## Prediction
+
+to do: check to see what the defaults are and if they work
+
+```{r eval=F}
+OverallRiskSummaries(fitkm,
+                     qs = c(0.25, 0.75),
+                     q.fixed = 0.5,
+                     m.fixed = "male",
+                     sel = 90:100,
+                     method = "exact")
+```
+
+```{r eval=F}
+SingVarRiskSummaries(fitkm,
+                     qs.diff = c(0.25, 0.75),
+                     q.fixed = 0.5,
+                     m.fixed = "male",
+                     sel = 90:100,
+                     method = "exact")
+```
+
+```{r eval=F}
+OverallIntSummaries(fitkm,
+                    qs = c(0.25, 0.75),
+                    q.fixed = 0.5,
+                    mod.diff = c("male", "female"), #female - male
+                    sel = 90:100,
+                    method = "fullpost")
+```
+
+```{r eval=F}
+SingVarIntSummaries(fitkm,
+                    qs.diff = c(0.25, 0.75),
+                    qs.fixed = c(0.5,0.5),
+                    mod.diff = c("male", "female"), #female - male
+                    sel = 90:100,
+                    method = "fullpost")
+```
+
+## Plotting
+
+
+
+# Bibliography
