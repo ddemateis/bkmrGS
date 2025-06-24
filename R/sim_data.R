@@ -2,9 +2,9 @@
 #'
 #' @description Data set for simulation
 #'
-#' @format A data frame of 1000 rows and 37 columns
+#' @format A list of response (y), 3 exposures (Z), binary modifier (modifier), and 14 covariates (X)
 #'
-#' @source Data source??
+#' @source Liu et al. 2021
 #'
-#' @examples data(data_standardized) # lazy load
-"data_standardized"
+#' @examples data(ex_data) # lazy load
+"ex_data"

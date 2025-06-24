@@ -32,86 +32,57 @@ HFun <- function (z, opt = 1){
 #' @param scenario Simulation scenario option: "none" for no modification between two groups, "oneGroup" for one group effect out of two groups, "scaled2" for one groups having a scaled effect of the other group with 2 exposures, "scaled3" is the same but for 3 exposures, and "multi" for one group with no effect and the other two groups having a scaled effect
 #' @param SNR signal-to-noise ratio
 #' @param mod_DGM indicator for including modifier in data generating mechanism
-#' @param sim_exp indicator for using simulated exposure values and covariates. Not recommended for simulation
 SimData2 <- function (scenario = "none",
                       SNR = 10,
-                      mod_DGM = T,
-                      sim_exp = F){
+                      mod_DGM = TRUE){
   
-  #data_standardized is lazy loaded
-  dta <- data_standardized[-c(50),] #50 is delivery type, 253 is pica
-  n <- nrow(dta)
-  
-  if(scenario == "scaled3"){
-    M <- 3
-  }else{
-    M <- 2
-  }
-  
+  #ex_data is lazy loaded
+  dta <- cbind(ex_data$Z, ex_data$X)
+  n <- nrow(dta) #350
+
   #sort by modifier
   if(scenario != "multi"){
-    dta <- dta[order(dta$X2),]
-  }else{
-    dta <- dta[order(dta$X16),]
+    dta <- dta[order(dta$Sex),] #child sex
+  }else{ 
+    dta <- dta[order(dta$HOME_play),] #HOME score (play)
   }
   
-  #generate exposures
-  if(sim_exp){
-    Z <- matrix(rnorm(n * M), n, M)
-  }else{
-    if(M==1){
-      Z <- scale(dta$pb_ln)
-    }else if(M==2){
-      Z <- cbind(scale(dta$pb_ln), scale(dta$mn_ln))
-    }else if(M==3){
-      Z <- cbind(scale(dta$pb_ln), scale(dta$mn_ln), scale(dta$as_ln))
-    }else{
-      stop("M not supported.")
-    }
-    
-  }
+  #set exposures
+  Z <- cbind(scale(dta$`Log Lead`), scale(dta$`Log Manganese`))
   
-  #generate covariates
-  if(sim_exp){
-    X <- cbind(3 * cos(Z[,1]) + 2 * rnorm(n),
-               3 * cos(Z[,2]) + 2 * rnorm(n))
+  #set covariates
+  if(scenario != "multi"){
+    X_full <- data.frame(dta$Age,
+                         dta$Gestation,
+                         dta$Delivery,
+                         dta$Birth_order,
+                         dta$Education_parent1,
+                         dta$Education_parent2,
+                         dta$Smoking,
+                         dta$HOME_emotional,
+                         dta$HOME_avoid,
+                         dta$HOME_careg,
+                         dta$HOME_env,
+                         dta$HOME_play,
+                         dta$HOME_stim,
+                         dta$Energy) 
   }else{
-    X_full <- data.frame(X1 = dta$X1, #continuous: visit age
-                         X2 = as.factor(dta$X2), #categorical: child sex 
-                         X3 = dta$X3, #continuous: gestation weeks, 
-                         X4 = as.factor(dta$X4), #categorical: delivery type, 2 categories
-                         X5 = as.factor(case_when(round(dta$X5, 2) == 0.03 ~ "birth_order_1",
-                                                  round(dta$X5, 2) == 0.05 ~ "birth_order_2",
-                                                  round(dta$X5, 2) >= 0.08 ~ "birth_order_3")), #categorical: birth order, originally 6 categories, we made 3 by grouping the last 4 together
-                         #X6 = data_standardized$X6, #continuous: drink water cups, 
-                         #X7 = as.factor(data_standardized$X7), #categorical: hospital child (y/n),
-                         #X8 = as.factor(data_standardized$X8), #categorical: pica (?) (y/n),
-                         X9 = as.factor(case_when(round(dta$X9, 2) <= 0.02 ~ "ed_1", #ed_1 contains the 0 group as well as the next lowest level of ed
-                                                  round(dta$X9, 2) == 0.04 ~ "ed_2",
-                                                  round(dta$X9, 2) >= 0.06 ~ "ed_3")), #categorical: education for birthing parent,
-                         X10 = as.factor(case_when(round(dta$X10, 2) <= 0.02 ~ "ed_1", #ed_1 contains the 0 group as well as the next lowest level of ed
-                                                   round(dta$X10, 2) == 0.04 ~ "ed_2",
-                                                   round(dta$X10, 2) >= 0.07 ~ "ed_3")), #categorical: education for non-birthing parent,
-                         X11 = as.factor(dta$X11), #categorical: smoke environment,
-                         X12 = dta$X12, #continuous: HOME score (emotional), 
-                         X13 = dta$X13, #continuous: HOME score (avoid), 
-                         X14 = dta$X14, #continuous: HOME score (careg), 
-                         X15 = dta$X15, #continuous: HOME score (env), 
-                         X16 = dta$X16, #continuous: HOME score (play), 
-                         X17 = dta$X17, #continuous: HOME score (stim), 
-                         X18 = dta$X18 #continuous: child estimate daily energy intake, 
-                         #X19 = data_standardized$X19, #continuous: baseline lead, 
-                         #X20 = data_standardized$X20, #continuous: baseline manganese, 
-                         #X21 = data_standardized$X21 #continuous: baseline arsenic, 
-    )
-    if(scenario != "multi"){
-      X_full <- X_full[,-c(2)] #remove X12 because it is the modifier and is included as a covariate in the model by default
-    }else{
-      X_full <- X_full[,-c(13)] #remove X16 because it is the modifier and is included as a covariate in the model by default
-    }
-    
-    X <- model.matrix(~., data=X_full)[,-1]
+    X_full <- data.frame(dta$Age,
+                         dta$Sex,
+                         dta$Gestation,
+                         dta$Delivery,
+                         dta$Birth_order,
+                         dta$Education_parent1,
+                         dta$Education_parent2,
+                         dta$Smoking,
+                         dta$HOME_emotional,
+                         dta$HOME_avoid,
+                         dta$HOME_careg,
+                         dta$HOME_env,
+                         dta$HOME_stim,
+                         dta$Energy)
   }
+  X <- model.matrix(~., data=X_full)[,-1]
   
   #randomly generate covariate coefficients
   beta.true <- rnorm(ncol(X))
@@ -119,16 +90,15 @@ SimData2 <- function (scenario = "none",
   #construct exposure-response curve
   h <- c()
   if(scenario != "multi"){
-    #med_vita <- median(data_standardized$vita)
-    modifier <- ifelse(round(dta$X2,1) == 0, 
+    modifier <- ifelse(dta$Sex == "male", 
                        "low", 
-                       "high") #ifelse(data_standardized$vita < med_vita, "low", "high")
+                       "high") 
     for(i in 1:n){
       if(scenario == "none"){
         opt = 1
       }else if(scenario == "oneGroup"){
         opt = 3
-      }else if(scenario == "scaled2" | scenario == "scaled3"){
+      }else if(scenario == "scaled2"){
         opt = 4
       }
       h[i] <- HFun(Z[i,], opt = ifelse(modifier[i] == "low", 1, opt))
@@ -137,7 +107,7 @@ SimData2 <- function (scenario = "none",
     modifier <- factor(modifier, levels = c("low", "high"))
   }else{
     modifier <- vector("character", n)
-    ref <- factor(round(dta$X16, 2))
+    ref <- factor(round(dta$HOME_play, 2))
     modifier[ref == "0.02"] <- "low" #13% of observations
     modifier[ref == "0.05"] <- "medium" #66% of observations
     modifier[ref == "0.07"] <- "high" #21% of observations
@@ -171,12 +141,11 @@ SimData2 <- function (scenario = "none",
   y <- mu + eps
   
   #including other null exposures
-  Z <- cbind(Z, scale(dta$as_ln))
+  Z <- cbind(Z, scale(dta$`Log Arsenic`))
   colnames(Z) <- paste0("z", 1:ncol(Z))
   
   #data structure
   dat <- list(n = n, 
-              M = M, 
               beta.true = beta.true, 
               Z = Z, 
               h = h, 
