@@ -85,7 +85,6 @@ makeVcomps <- function(r, lambda, Z, data.comps, modifier = NULL) {
 #' @param family a description of the error distribution and link function to be used in the model. Currently implemented for \code{gaussian} and \code{binomial} families.
 #' @param id optional vector (of length \code{n}) of grouping factors for fitting a model with a random intercept. If NULL then no random intercept will be included.
 #' @param verbose TRUE or FALSE: flag indicating whether to print intermediate diagnostic information during the model fitting.
-#' @param Znew optional matrix of new predictor values at which to predict \code{h}, where each row represents a new observation. This will slow down the model fitting, and can be done as a post-processing step using \code{\link{SamplePred}}
 #' @param starting.values list of starting values for each parameter. If not specified default values will be chosen.
 #' @param control.params list of parameters specifying the prior distributions and tuning parameters for the MCMC algorithm. If not specified default values will be chosen.
 #' @param varsel TRUE or FALSE: indicator for whether to conduct variable selection on the Z variables in \code{h}
@@ -110,7 +109,7 @@ makeVcomps <- function(r, lambda, Z, data.comps, modifier = NULL) {
 #' @import utils
 #' 
 #' @examples
-#' ## First generate dataset
+#' ## First generate data set
 #' set.seed(111)
 #' dat <- SimData(n = 50, M = 4)
 #' y <- dat$y
@@ -125,11 +124,10 @@ makeVcomps <- function(r, lambda, Z, data.comps, modifier = NULL) {
 kmbayes <- function(y, Z, X = NULL, 
                     modifier = NULL, #added by DD
                     iter = 1000, family = "gaussian", id = NULL, verbose = TRUE, 
-                    Znew = NULL, starting.values = NULL, 
-                    control.params = NULL, varsel = FALSE, groups = NULL,
-                    knots = NULL, ztest = NULL, rmethod = "varying",
-                    est.h = FALSE, modtest = FALSE, kernel.method = "one",
-                    gs.tau = FALSE, gs.sig = FALSE) {
+                    starting.values = NULL, control.params = NULL, varsel = FALSE, 
+                    groups = NULL, knots = NULL, ztest = NULL, rmethod = "varying",
+                    est.h = FALSE, modtest = FALSE, kernel.method = "two",
+                    gs.tau = TRUE, gs.sig = FALSE) {
   #browser()
   missingX <- is.null(X)
   if (missingX) X <- matrix(0, length(y), 1)
@@ -214,10 +212,10 @@ kmbayes <- function(y, Z, X = NULL,
       knots<-NA
     }
   }
-  if (!is.null(Znew)) { 
-    if (!inherits(Znew, "matrix"))  Znew <- as.matrix(Znew)
-    stopifnot(is.numeric(Znew), ncol(Znew) == ncol(Z), anyNA(Znew) == FALSE)
-  }
+  # if (!is.null(Znew)) { 
+  #   if (!inherits(Znew, "matrix"))  Znew <- as.matrix(Znew)
+  #   stopifnot(is.numeric(Znew), ncol(Znew) == ncol(Z), anyNA(Znew) == FALSE)
+  # }
   if (!is.null(knots)) { 
     if (!inherits(knots, "matrix"))  knots <- as.matrix(knots)
     stopifnot(is.numeric(knots), ncol(knots )== ncol(Z), anyNA(knots) == FALSE)
@@ -333,17 +331,17 @@ kmbayes <- function(y, Z, X = NULL,
     chain$ystar <- matrix(0, nsamp, length(y))
   }
   
-  ## components to predict h(Znew)
-  if (!is.null(Znew)) {
-    if (is.null(dim(Znew))) Znew <- matrix(Znew, nrow=1)
-    if (inherits(Znew, "data.frame")) Znew <- data.matrix(Znew)
-    if (ncol(Z) != ncol(Znew)) {
-      stop("Znew must have the same number of columns as Z")
-    }
-    ##Kpartall <- as.matrix(dist(rbind(Z,Znew)))^2
-    chain$hnew <- matrix(0,nsamp,nrow(Znew))
-    colnames(chain$hnew) <- rownames(Znew)
-  }
+  # ## components to predict h(Znew)
+  # if (!is.null(Znew)) {
+  #   if (is.null(dim(Znew))) Znew <- matrix(Znew, nrow=1)
+  #   if (inherits(Znew, "data.frame")) Znew <- data.matrix(Znew)
+  #   if (ncol(Z) != ncol(Znew)) {
+  #     stop("Znew must have the same number of columns as Z")
+  #   }
+  #   ##Kpartall <- as.matrix(dist(rbind(Z,Znew)))^2
+  #   chain$hnew <- matrix(0,nsamp,nrow(Znew))
+  #   colnames(chain$hnew) <- rownames(Znew)
+  # }
   
   ## components if model selection is being done
   if(modtest & is.null(modifier) | modtest & kernel.method == "two"){
@@ -600,12 +598,12 @@ kmbayes <- function(y, Z, X = NULL,
       rm(hcomps)
     }
       
-    ###################################################
-    ## generate posterior samples of h(Znew) from its posterior P(hnew | beta, sigsq.eps, lambda, r, y)
-    
-    if (!is.null(Znew)) {
-      chain$hnew[s,] <- newh.update(Z = Z, Znew = Znew, mod_new = mod_new, Vcomps = Vcomps, lambda = chain$lambda[s,], sigsq.eps = chain$sigsq.eps[s, ], r = chain$r[s,], y = ycont, X = X, beta = chain$beta[s,], data.comps = data.comps, modifier = modifier, kernel.method = kernel.method)
-    }
+    # ###################################################
+    # ## generate posterior samples of h(Znew) from its posterior P(hnew | beta, sigsq.eps, lambda, r, y)
+    # 
+    # if (!is.null(Znew)) {
+    #   chain$hnew[s,] <- newh.update(Z = Z, Znew = Znew, mod_new = mod_new, Vcomps = Vcomps, lambda = chain$lambda[s,], sigsq.eps = chain$sigsq.eps[s, ], r = chain$r[s,], y = ycont, X = X, beta = chain$beta[s,], data.comps = data.comps, modifier = modifier, kernel.method = kernel.method)
+    # }
     
     ###################################################
     ## print details of the model fit so far
@@ -638,7 +636,7 @@ kmbayes <- function(y, Z, X = NULL,
   chain$y <- y
   chain$ztest <- ztest
   chain$data.comps <- data.comps
-  if (!is.null(Znew)) chain$Znew <- Znew
+  #if (!is.null(Znew)) chain$Znew <- Znew
   if (!is.null(groups)) chain$groups <- groups
   chain$varsel <- varsel
   chain$kernel.method <- kernel.method

@@ -13,7 +13,6 @@ kmbayes(
   family = "gaussian",
   id = NULL,
   verbose = TRUE,
-  Znew = NULL,
   starting.values = NULL,
   control.params = NULL,
   varsel = FALSE,
@@ -23,8 +22,8 @@ kmbayes(
   rmethod = "varying",
   est.h = FALSE,
   modtest = FALSE,
-  kernel.method = "one",
-  gs.tau = FALSE,
+  kernel.method = "two",
+  gs.tau = TRUE,
   gs.sig = FALSE
 )
 }
@@ -44,8 +43,6 @@ kmbayes(
 \item{id}{optional vector (of length \code{n}) of grouping factors for fitting a model with a random intercept. If NULL then no random intercept will be included.}
 
 \item{verbose}{TRUE or FALSE: flag indicating whether to print intermediate diagnostic information during the model fitting.}
-
-\item{Znew}{optional matrix of new predictor values at which to predict \code{h}, where each row represents a new observation. This will slow down the model fitting, and can be done as a post-processing step using \code{\link{SamplePred}}}
 
 \item{starting.values}{list of starting values for each parameter. If not specified default values will be chosen.}
 
@@ -82,7 +79,7 @@ an object of class "bkmrfit" (containing the posterior samples from the model fi
 Fits the Bayesian kernel machine regression (BKMR) model using Markov chain Monte Carlo (MCMC) methods.
 }
 \examples{
-## First generate dataset
+## First generate data set
 set.seed(111)
 dat <- SimData(n = 50, M = 4)
 y <- dat$y
