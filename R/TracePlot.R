@@ -9,7 +9,7 @@
 #' @param ... other arguments to pass onto the plotting function
 #' @export
 #' @import graphics
-#' @details For guided examples, go to \url{https://jenfb.github.io/bkmr/overview.html}
+#' @details For guided examples, see vignette(bkmrGSOverview)
 #' 
 #' @return No return value, generates plot
 #' 
