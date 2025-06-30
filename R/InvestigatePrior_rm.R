@@ -28,6 +28,8 @@
 #' PlotPriorFits(y = y, Z = Z, X = X, fits = priorfits)
 InvestigatePrior <- function(y, Z, X, ngrid = 50, q.seq = c(2, 1, 1/2, 1/4, 1/8, 1/16), r.seq = NULL, Drange = NULL, verbose = FALSE) {
   
+  warning("Not supported for group-separable BKMR models.")
+  
   if (is.null(r.seq)) {
     if (is.null(Drange)) {
       zranges <- diff(apply(Z, 2, range))
@@ -118,6 +120,9 @@ InvestigatePrior <- function(y, Z, X, ngrid = 50, q.seq = c(2, 1, 1/2, 1/4, 1/8,
 #' priorfits <- InvestigatePrior(y = y, Z = Z, X = X, q.seq = c(2, 1/2, 1/4, 1/16))
 #' PlotPriorFits(y = y, Z = Z, X = X, fits = priorfits)
 PlotPriorFits <- function(y, X, Z, fits, which.z = NULL, which.q = NULL, plot.resid = TRUE, ylim = NULL, ...) {
+  
+  warning("Not supported for group-separabe models.")
+  
   q.seq <- fits$q.seq
   r.seq <- fits$r.seq
   Znew <- fits$Znew
