@@ -1,8 +1,8 @@
 ---
-title: "my-vignette"
+title: "bkmrGSOverview"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{my-vignette}
+  %\VignetteIndexEntry{bkmrGSOverview}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -12,6 +12,10 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
+```
+
+```{r echo=FALSE}
+library(ggplot2)
 ```
 
 # Preamble
@@ -29,121 +33,338 @@ Then the package can be loaded by
 library(bkmrGS)
 ```
 
+If you are performing both BKMR analyses with and without effect modification, the following is important. First, use the `bkmr` package from CRAN for BKMR analyses without modification. While the `bkmrGS` package can fit both models, `bkmr` package will have the latest updates. Second, make sure to specify the package name when calling functions from each package. Many functions share the same name, so specifying which package to use is important. For example, use `bkmr::kmbayes()` to specify the `kmbayes` function from the `bkmr` package, and use `bkmrGS::kmbayes()` to specify the `kmbayes` function from the `bkmrGS` package. 
+
 # Methodology and Applications
 
-Paper with methods submitted to American Journal of Epidemiology.
+Paper pending.
 
-# Functions in the package
-
-## The function `kmbayes()`
-
-## The function `SamplePred()`
-
-## The function `PredictorResponseUnivar()`
-
-## The function `OverallIntSummaries()`
-
-## The function `OverallRiskSummaries()`
-
-## The function `SingVarIntSummaries()`
-
-## The function `SingVarRiskSummaries()`
-
-# Example
+# Group-separable BKMR Model
 
 ## Model Fitting
 
 Using the example data set in the package, fit the model using the `kmbayes()` function. First load the data set:
 
-```{r eval=F}
-data("data_standardized")
-str(data_standardized)
+```{r}
+data("ex_data")
+str(ex_data)
 ```
 
-Set a response, exposure matrix, modifier, and covariates matrix. 
+In this data set, `y` is the response (neurodevelopment score, BSID-III), `Z` is a matrix of 3 exposures (lead, manganese, and arsenic measured in the fetus cumulatively during gestation), and `X` is a matrix of covariates. This data set is from the Liu et al. 2021 paper. We used child sex (boy/girl) as a binary modifier of the effect of exposure on neurodevelopment. Note that when choosing a modifier, it should not be included as a covariate because including the modifier as a covariate is built into the model. Also note that because the covariates contain factor variables, it is important to create a design matrix that converts these to indicators variables to use in the model.
 
-to do: make data set in the package the processed data set
+```{r}
+y <- ex_data$y
+Z <- ex_data$Z
+modifier <- ex_data$X$Sex
+X_full <- ex_data$X[,-2] #remove Sex from the covariate matrix because it is the modifier
 
-```{r eval=F}
-y <- data_standardized$y
-Z <- cbind("Lead" = data_standardized$pb_ln,
-           "Arsenic" = data_standardized$as_ln,
-           "Manganese" = data_standardized$mn_ln)
-modifier <- ifelse(data_standardized$X2 < 0.04, "male", "female")
+#create design matrix to account for factor variables
+X <- model.matrix(~., data=X_full)[,-1] #remove the intercept column
 ```
 
+Now fit the model with the `kmbayes()` function. The following example uses 10 MCMC iterations, but it is important to use ample MCMC iterations and check model convergence. 
 
-This data set is from the Lui et al. 2019 paper. Now fit the model with the `kmbayes()` function. The following example uses 100 MCMC iterations, but it is important to use ample MCMC iterations and check model convergence. 
-
-to do: add X, make kernel.method = "two" and gs.tau = TRUE the default
-
-```{r eval=F}
-fitkm <- kmbayes(y = data_standardized$y, #response
+```{r}
+fitkm <- kmbayes(y = y, #response
                  Z = Z, #exposure
                  modifier = modifier,
-                 iter = 100, #MCMC iterations
-                 verbose = FALSE, #controls output during fitting
-                 kernel.method = "two",
-                 gs.tau = TRUE)
+                 X = X,
+                 iter = 10, #MCMC iterations
+                 verbose = FALSE) #controls output during fitting
 ```
 
-We can quickly look at the object by printing it:
+We can quickly look at the object by printing it and using the `summary()` function:
 
-```{r eval=F}
+```{r}
 fitkm
+summary(fitkm)
 ```
 
-Next, check the convergence of model parameters with the following trace plots. 
+Next, check the convergence of model parameters with the following trace plots. Use the `TracePlot()` function and specify the parameter with the `par` argument.
 
-to do: fix trace plot function
-
-```{r eval=F}
-TracePlot(fitkm)
+```{r}
+TracePlot(fitkm, par = "beta")
+TracePlot(fitkm, par = "sigsq.eps")
+TracePlot(fitkm, par = "lambda")
+TracePlot(fitkm, par = "r", comp = 1)
 ```
 
+Check acceptance rates of $r$ and $\lambda$. 
+
+```{r}
+colMeans(fitkm$acc.r)
+colMeans(fitkm$acc.lambda)
+```
+
+Consider changing hyperparameters if acceptance rates are too high or too low. See https://jenfb.github.io/bkmr/overview.html for more details. 
 
 ## Prediction
 
-to do: check to see what the defaults are and if they work
+### Group-specific effects
 
-```{r eval=F}
-OverallRiskSummaries(fitkm,
-                     qs = c(0.25, 0.75),
-                     q.fixed = 0.5,
-                     m.fixed = "male",
-                     sel = 90:100,
-                     method = "exact")
+To estimate the total effect of the mixture individually for each modifier group, use the `OverallRiskSummaries()` function. This takes an object from `kmbayes` (`fit`), a vector of quantiles for the first part of the difference (`qs`), a single value for the second part of the difference (`q.fixed`), the modifier level (`m.fixed`), and the estimation method (currently, only `method = "exact"` is supported). Note that `qs` can be a vector to compute multiple effects or a single value to compute a single effect, but `q.fixed` must be a single value. The following example computes two estimated effects for the boy group: the effect of the total mixture fixed at the median compared to the first quartile, and the effect of the total mixture fixed at the third quartile compared to the median.
+
+```{r}
+total_mix_gs <- OverallRiskSummaries(fitkm,
+                                     qs = c(0.25, 0.5, 0.75),
+                                     q.fixed = 0.5,
+                                     m.fixed = "male",
+                                     method = "exact")
+print(total_mix_gs)
 ```
 
-```{r eval=F}
-SingVarRiskSummaries(fitkm,
-                     qs.diff = c(0.25, 0.75),
-                     q.fixed = 0.5,
-                     m.fixed = "male",
-                     sel = 90:100,
-                     method = "exact")
+To estimate the effect of a single exposure individually for each modifier group, use the `SingVarRiskSummaries()` function. This takes an object from `kmbayes` (`fit`), a vector of two quantiles for computing the difference (`qs.diff`), a single value at which to fix the other exposure (`q.fixed`), the modifier level (`m.fixed`), and the estimation method (currently, only `method = "exact"` is supported). The following example computes the estimated effect of an IQR change in each exposure when the others are fixed at the median, for boys.
+
+```{r}
+single_exp_gs <- SingVarRiskSummaries(fitkm,
+                                       qs.diff = c(0.25, 0.75),
+                                       q.fixed = 0.5,
+                                       m.fixed = "male",
+                                       method = "exact")
+print(single_exp_gs)
 ```
 
-```{r eval=F}
-OverallIntSummaries(fitkm,
-                    qs = c(0.25, 0.75),
-                    q.fixed = 0.5,
-                    mod.diff = c("male", "female"), #female - male
-                    sel = 90:100,
-                    method = "fullpost")
+### Between-group differences in effect
+
+To estimate the difference in total effect of the mixture between modifier groups, use the `OverallIntSummaries()` function. This takes an object from `kmbayes` (`fit`), a vector of quantiles for the first part of the difference (`qs`), a single value for the second part of the difference (`q.fixed`), the modifier level (`m.fixed`), and the estimation method (`method = "exact"` or `method = "fullpost"`). Note that `qs` can be a vector to compute multiple effects or a single value to compute a single effect, but `q.fixed` must be a single value. The following example computes two estimated effects: the difference in effect between boys and girls of the total mixture fixed at the median compared to the first quartile, and the difference in effect between boys and girls of the total mixture fixed at the third quartile compared to the median.
+
+```{r}
+total_mix_btwn <- OverallIntSummaries(fitkm,
+                                             qs = c(0.25, 0.5, 0.75),
+                                             q.fixed = 0.5,
+                                             mod.diff = c("male", "female"), #female - male
+                                             sel = 5:10,
+                                             method = "exact")
+print(total_mix_btwn)
 ```
 
-```{r eval=F}
-SingVarIntSummaries(fitkm,
-                    qs.diff = c(0.25, 0.75),
-                    qs.fixed = c(0.5,0.5),
-                    mod.diff = c("male", "female"), #female - male
-                    sel = 90:100,
-                    method = "fullpost")
+To estimate the difference in effect of a single exposure between modifier groups, use the `SingVarIntSummaries()` function. This takes an object from `kmbayes` (`fit`), a vector of two quantiles for computing the difference (`qs.diff`), a single value repeated twice in a vector at which to fix the other exposure (`q.fixed`), the modifier level (`m.fixed`), and the estimation method (`method = "exact"` or `method = "fullpost"`). The following example computes the estimated difference in effect between boys and girls of an IQR change in each exposure when the others are fixed at the median.
+
+```{r}
+single_exp_btwn <- SingVarIntSummaries(fitkm,
+                                       qs.diff = c(0.25, 0.75),
+                                       qs.fixed = c(0.5,0.5),
+                                       mod.diff = c("male", "female"), #female - male
+                                       method = "exact")
+print(single_exp_btwn)
 ```
 
 ## Plotting
 
+### Exposure-response function
 
+To plot the estimated exposure-response function for each group, use the `PredictorResponseUnivar()` function. This function takes a fit object from `kmbayes` (`fit`), estimation method (`"exact"` or `"fullpost"`) returns the estimated exposure-response function value (`est`) and standard error (`se`) across a grid of exposure values (`z`) for each exposure (`variable`) for each modifier level (`modifier`).
+
+```{r}
+pred.resp.univar <- PredictorResponseUnivar(fit = fitkm, 
+                                            method = "exact",
+                                            q.fixed = 0.5)
+head(pred.resp.univar)
+```
+
+```{r}
+ggplot(pred.resp.univar, aes(z, est, ymin = est - 1.96*se, 
+                                   ymax = est + 1.96*se, color = modifier, fill = modifier, linetype = modifier)) + 
+  geom_smooth(stat = "identity") + 
+  geom_hline(yintercept=0)+
+  facet_wrap(vars(variable)) +
+  xlab("Exposure level (log transformed, centered/scaled)") +
+  ylab("Exposure-response function (h)") +
+  theme_classic() +
+  theme(legend.position = "bottom",
+        text = element_text(size = 12))+
+  labs(color="Child sex", fill = "Child sex", linetype = "Child sex") +
+  scale_fill_manual(values=c("#CDC1D1", "#C3DCD7"))+
+  scale_color_manual(values=c("#421052", "#3BA68A"))
+```
+
+### Group-specific effect estimates
+
+To compare estimates of the effect of each exposure in both modifier groups, use the `SingVarRiskSummaries()` function for each modifier level and append into a single data frame for plotting. 
+
+```{r}
+single_exp_gs$modifier <- rep("male",nrow(single_exp_gs))
+
+single_exp_gs_tmp <- SingVarRiskSummaries(fitkm,
+                                            qs.diff = c(0.25, 0.75),
+                                            q.fixed = 0.5,
+                                            m.fixed = "female",
+                                            sel = 5:10,
+                                            method = "exact")
+single_exp_gs_tmp$modifier <- rep("female",nrow(single_exp_gs_tmp))
+single_exp_gs_df <- rbind(single_exp_gs, single_exp_gs_tmp)
+```
+
+```{r}
+ggplot(single_exp_gs_df, 
+       aes(x=q.fixed, y = est, ymin = est - 1.96*sd, 
+           ymax = est + 1.96*sd, color = modifier, 
+           shape = modifier))+
+  geom_hline(yintercept=0)+
+  geom_pointrange(position = position_dodge(width = 0.5), size=0.5)+
+  facet_wrap(vars(variable))+
+  theme_bw()+
+  theme(legend.position = "bottom",
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+        text = element_text(size = 12))+
+  xlab("Quantile")+
+  ylab("Difference in BSID-III per \n IQR change in exposure") +
+  labs(color="Child sex", fill = "Child sex", shape = "Child sex") +
+  scale_color_manual(values=c("#421052", "#3BA68A"))
+
+```
+
+To compare estimates of the total effect of the mixture in both modifier groups, use the `SingVarRiskSummaries()` function for each modifier level and append into a single data frame for plotting. 
+
+```{r}
+total_mix_gs$modifier <- rep("male", nrow(total_mix_gs))
+total_mix_gs_tmp <- OverallRiskSummaries(fitkm,
+                                         qs = c(0.25, 0.5, 0.75),
+                                         q.fixed = 0.5,
+                                         m.fixed = "female",
+                                         sel = 5:10,
+                                         method = "exact")
+total_mix_gs_tmp$modifier <- rep("female", nrow(total_mix_gs_tmp))
+total_mix_gs_df <- rbind(total_mix_gs, total_mix_gs_tmp)
+```
+
+```{r}
+ggplot(total_mix_gs_df, 
+       aes(x=quantile, y = est, ymin = est - 1.96*sd, 
+           ymax = est + 1.96*sd, color = modifier, 
+           shape = modifier))+
+  geom_hline(yintercept=0)+
+  geom_pointrange(position = position_dodge(width = 0.05), size=0.5)+
+  theme_bw()+
+  theme(legend.position = "bottom",
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+        text = element_text(size = 12))+
+  xlab("Quantile")+
+  ylab("Difference in BSID-III per \n IQR change in exposure") +
+  labs(color="Child sex", fill = "Child sex", shape = "Child sex") +
+  scale_color_manual(values=c("#421052", "#3BA68A"))
+
+```
+
+
+### Between-group differences in effect estimates
+
+```{r}
+ggplot(total_mix_btwn, aes(x=quantile, y = est, ymin = est - 1.96*sd, 
+                                   ymax = est + 1.96*sd))+
+  geom_hline(yintercept=0)+
+  geom_pointrange(size=0.5)+
+  theme_bw()+
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+        text = element_text(size = 12))+
+  xlab("Quantile")+
+  ylab("Difference in association \n (per IQR change) with BSID-III \n between girls and boys")
+```
+
+
+```{r}
+ggplot(single_exp_btwn, aes(x="", y = est, ymin = est - 1.96*sd, 
+                                   ymax = est + 1.96*sd))+
+  geom_hline(yintercept=0)+
+  geom_pointrange(size=0.5)+
+  facet_wrap(vars(variable))+
+  theme_bw()+
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+        text = element_text(size = 12))+
+  xlab("")+
+  ylab("Difference in association \n (per IQR change) with BSID-III \n between girls and boys")
+```
+
+# Comparison to stratified and pooled approach
+
+The group-separable BKMR model is recommended over a stratified approach to assess modification, and also recommended over a pooled approach without modification. To demonstrate, first fit a BKMR model without modification, pooling across groups. To do this, make sure to set `gs.tau = FALSE`, set `kernel.method = "one"`, and include the modifier along with the covariates. 
+
+```{r}
+modifier_coded <- as.matrix(model.matrix(~modifier)[,-1])
+fitkm_EO <- kmbayes(y = y, #response
+                    Z = Z, #exposure
+                    X = cbind(X, modifier_coded), #covariates, including the modifier 
+                    iter = 10, #MCMC iterations
+                    verbose = FALSE, #controls output during fitting
+                    gs.tau = FALSE,
+                    kernel.method = "one")
+```
+
+Then fit BKMR models stratified by the modifier. To do this, make sure to set `gs.tau = FALSE` and set `kernel.method = "one"`.
+
+```{r}
+dat1 <- list(y = y[modifier=="male"],
+             Z = Z[modifier=="male",],
+             X = X[modifier=="male",])
+dat2 <- list(y = y[modifier=="female"],
+             Z = Z[modifier=="female",],
+             X = X[modifier=="female",])
+#males
+fitkm_boys <- kmbayes(y = dat1$y, #response
+                      Z = dat1$Z, #exposure
+                      X = dat1$X, #covariates
+                      iter = 10, #MCMC iterations
+                      verbose = FALSE, #controls output during fitting
+                      gs.tau = FALSE,
+                      kernel.method = "one") 
+#females
+fitkm_girls <- kmbayes(y = dat2$y, #response
+                       Z = dat2$Z, #exposure
+                       X = dat2$X, #covariates
+                       iter = 10, #MCMC iterations
+                       verbose = FALSE, #controls output during fitting
+                       gs.tau = FALSE,
+                       kernel.method = "one") 
+```
+
+Now, use `PredictorResponseUnivar()` to generate plotting data for comparison.
+
+```{r}
+#add model label to GS model
+pred.resp.univar$Model <- rep("Group-separable", nrow(pred.resp.univar))
+
+#Exposure-only model
+tmp_df <- PredictorResponseUnivar(fit = fitkm_EO, 
+                                  method = "exact",
+                                  q.fixed = 0.5)
+nr <- nrow(tmp_df)
+tmp_df$modifier <- rep("male", nr)
+tmp_df2 <- tmp_df
+tmp_df2$modifier <- rep("female", nr)
+tmp_df <- rbind(tmp_df, 
+                tmp_df2)
+tmp_df$Model <- rep("Exposure-only", nrow(tmp_df))
+pred.resp.univar <- rbind(pred.resp.univar, tmp_df)
+
+#stratified model
+pred_boys <- PredictorResponseUnivar(fit = fitkm_boys,
+                                 method = "exact",
+                                 q.fixed = 0.5)
+pred_boys$modifier <- rep("male", nrow(pred_boys))
+pred_girls <- PredictorResponseUnivar(fit = fitkm_girls,
+                                 method = "exact",
+                                 q.fixed = 0.5)
+pred_girls$modifier <- rep("female", nrow(pred_girls))
+tmp_df <- rbind(pred_boys, pred_girls)
+tmp_df$Model <- rep("stratified", nrow(tmp_df))
+pred.resp.univar <- rbind(pred.resp.univar, tmp_df)
+```
+
+
+```{r}
+ggplot(pred.resp.univar, aes(z, est, ymin = est - 1.96*se, 
+                                   ymax = est + 1.96*se, color = modifier, fill = modifier, linetype = modifier)) + 
+  geom_smooth(stat = "identity") + 
+  geom_hline(yintercept=0)+
+  facet_grid(variable~Model) +
+  xlab("Exposure level (log transformed, centered/scaled)") +
+  ylab("Exposure-response function (h)") +
+  theme_classic() +
+  theme(legend.position = "bottom",
+        text = element_text(size = 12))+
+  labs(color="Child sex", fill = "Child sex", linetype = "Child sex") +
+  scale_fill_manual(values=c("#CDC1D1", "#C3DCD7"))+
+  scale_color_manual(values=c("#421052", "#3BA68A"))
+```
 
 # Bibliography
