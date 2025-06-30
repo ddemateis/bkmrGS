@@ -2,22 +2,18 @@
 riskSummary.approx <- function(point1, point2, modnew = NULL, preds.fun, ...) {
   cc <- c(-1, 1)
   newz <- rbind(point1, point2)
-  # if(!is.null(modnew)){
-  #   modnew <- matrix(rep(modnew, nrow(newz)), ncol=1)
-  # }
   preds <- preds.fun(newz, modnew, ...)
-  diff <- drop(cc %*% preds$postmean) #E[AX] = A*E[X]
-  diff.sd <- drop(sqrt(cc %*% preds$postvar %*% cc)) #V[AX] = A * V[X] *A'
-  c(est = diff, sd = diff.sd)
-}
-
-#not used
-riskSummary.samp <- function(point1, point2, preds.fun, ...) {
-  cc <- c(-1, 1)
-  newz <- rbind(point1, point2)
-  preds <- preds.fun(newz, ...)
-  diff.preds <- drop(preds %*% cc)
-  c(est = mean(diff.preds), sd = sd(diff.preds))
+  if("matrix" %in% class(preds)){
+    post_samp <- preds %*% matrix(cc, ncol=1)
+    int <- drop(mean(post_samp))
+    int.lb <- drop(quantile(post_samp, probs = 0.025))
+    int.ub <- drop(quantile(post_samp, probs = 0.975))
+    c(est = int, lb = int.lb, ub = int.ub)
+  }else{
+    diff <- drop(cc %*% preds$postmean) #E[AX] = A*E[X]
+    diff.sd <- drop(sqrt(cc %*% preds$postvar %*% cc)) #V[AX] = A * V[X] *A'
+    c(est = diff, sd = diff.sd)
+  }
 }
 
 #used in interaction effect functions
@@ -40,16 +36,6 @@ interactionSummary.approx <- function(newz.q1, newz.q2, modnew.1, modnew.2, pred
   
 }
 
-#not used
-interactionSummary.samp <- function(newz.q1, newz.q2, preds.fun, ...) {
-  cc <- c(-1*c(-1, 1), c(-1, 1))
-  newz <- rbind(newz.q1, newz.q2)
-  preds <- preds.fun(newz, ...)
-  int.preds <- drop(preds %*% cc)
-  c(est = mean(int.preds), sd = sd(int.preds))
-}
-
-
 
 #' Calculate overall risk summaries
 #' 
@@ -63,26 +49,25 @@ interactionSummary.samp <- function(newz.q1, newz.q2, preds.fun, ...) {
 #' @export
 #' @return a data frame containing the (posterior mean) estimate and posterior standard deviation of the overall risk measures
 #' @examples
-#' ## First generate dataset
-#' set.seed(111)
-#' dat <- SimData(n = 50, M = 4)
-#' y <- dat$y
-#' Z <- dat$Z
-#' X <- dat$X
+#' ## First generate data set
+#' y <- ex_data$y
+#' Z <- ex_data$Z
+#' modifier <- ex_data$X$Sex
+#' X_full <- ex_data$X[,-2] #remove Sex from the covariate matrix because it is the modifier
+#' X <- model.matrix(~., data=X_full)[,-1] #create design matrix to account for factor variables, remove the intercept column
 #' 
-#' ## Fit model with component-wise variable selection
-#' ## Using only 100 iterations to make example run quickly
+#' ## Fit model 
+#' ## Using only 10 iterations to make example run quickly
 #' ## Typically should use a large number of iterations for inference
 #' set.seed(111)
-#' fitkm <- kmbayes(y = y, Z = Z, X = X, iter = 100, verbose = FALSE, varsel = TRUE)
+#' fitkm <- kmbayes(y = y, Z = Z, modifier = modifier, X = X, iter = 10, verbose = FALSE) 
 #' 
-#' risks.overall <- OverallRiskSummaries(fit = fitkm, qs = seq(0.25, 0.75, by = 0.05), 
-#' q.fixed = 0.5, method = "exact")
+#' risks.overall <- OverallRiskSummaries(fitkm, qs = c(0.25, 0.75), q.fixed = 0.5, m.fixed = "male", method = "fullpost")
 OverallRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL, 
                                  modifier = NULL, 
                                  qs = seq(0.25, 0.75, by = 0.05), 
                                  q.fixed = 0.5, m.fixed = NULL,
-                                 method = "approx", sel = NULL) {
+                                 method = "fullpost", sel = NULL) {
   
   if (inherits(fit, "bkmrfit")) {
     if (is.null(y)) 
@@ -143,8 +128,22 @@ OverallRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
       
       }
     riskSummary <- riskSummary.approx
-  }else {
-    stop("method must be one of c('approx', 'exact')")
+  }else if(method == "fullpost"){
+    preds.fun <- function(znew, modnew=NULL) {
+      SamplePred(fit = fit,
+                 y = y,
+                 Z = Z,
+                 X = X,
+                 modifier = modifier,
+                 Znew = znew,
+                 Xnew = matrix(0, nrow = nrow(znew), ncol = ncol(X)),
+                 mod_new = modnew,
+                 sel = sel)
+    }
+    riskSummary <- riskSummary.approx
+    
+  }else{
+    stop("method must be one of c('approx', 'exact', 'fullpost')")
   }
   
   tmp_fn <- function(quant) { 
@@ -159,78 +158,11 @@ OverallRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
   risks.overall <- data.frame(quantile = qs, risks.overall)
 }
 
-#' Calculate modifier interaction summaries
-#' 
-#' Compare estimated \code{h} function when all predictors are at a particular quantile to when all are at a second fixed quantile
-#' @inheritParams kmbayes
-#' @inheritParams ComputePostmeanHnew
-#' @inherit ComputePostmeanHnew details
-#' @param q.fixed vector of quantiles at which to calculate the summary 
-#' @param m.diff vector of two modifier values at which to compare the estimated \code{h} function
-#' @export
-#' @return a data frame containing the (posterior mean) estimate and posterior standard deviation of the overall risk measures
-
-ModifierIntSummaries <- function(fit, y = NULL, Z = NULL, X = NULL, 
-                                 modifier = NULL, m.diff,
-                                 q.fixed = seq(0.25, 0.75, by = 0.05), 
-                                 method = "approx", sel = NULL) {
-  
-  if (inherits(fit, "bkmrfit")) {
-    if (is.null(y)) 
-      y <- fit$y
-    if (is.null(Z)) 
-      Z <- fit$Z
-    if (is.null(X)) 
-      X <- fit$X
-    if (is.null(modifier)) 
-      modifier <- fit$modifier   
-  }
-  
-  # happens in computepostmeanhnew
-  # #convert modifier to factor and construct contrast matrix
-  # if(!is.null(modifier)){
-  #   orig_modifier <- modifier
-  #   modifier <- as.factor(modifier)
-  #   modifier <- as.matrix(model.matrix(~modifier)[,-1])
-  # }
-  
-  if (method %in% c("approx", "exact")) {
-    
-    preds.fun <- function(znew, modnew=NULL) {
-      
-      ComputePostmeanHnew(fit = fit,
-                          y = y,
-                          Z = Z,
-                          X = X,
-                          modifier = modifier,
-                          Znew = znew,
-                          mod_new = modnew,
-                          sel = sel,
-                          method = method)
-      
-    }
-    riskSummary <- riskSummary.approx
-  }else {
-    stop("method must be one of c('approx', 'exact')")
-  }
-  
-  tmp_fn <- function(quant) { 
-    riskSummary(point1 = apply(Z, 2, quantile, quant), 
-                point2 = apply(Z, 2, quantile, quant),
-                modnew = m.diff,
-                preds.fun = preds.fun) 
-  }
-  
-  #for each quantile in qs, call call riskSummary function
-  risks.overall <- t(sapply(q.fixed, tmp_fn))
-  risks.overall <- data.frame(quantile = q.fixed, risks.overall)
-}
-
 #used in SingVarRiskSummaries() below
 #Compare estimated \code{h} function when a single variable (or a set of variables) is at the 75th versus 25th percentile, when all of the other variables are fixed at a particular percentile
 VarRiskSummary <- function (whichz = 1, fit, y = NULL, Z = NULL, X = NULL,
                             modifier = NULL, qs.diff = c(0.25, 0.75), 
-                            q.fixed = 0.5, method = "approx", m.fixed = NULL, 
+                            q.fixed = 0.5, method = "fullpost", m.fixed = NULL, 
                             sel = NULL, ...){ 
   
   if (inherits(fit, "bkmrfit")) {
@@ -286,9 +218,22 @@ VarRiskSummary <- function (whichz = 1, fit, y = NULL, Z = NULL, X = NULL,
                           method = method)
       }
     riskSummary <- riskSummary.approx
-  }
-  else {
-    stop("method must be one of c('approx', 'exact')")
+  }else if(method == "fullpost"){
+    preds.fun <- function(znew, modnew=NULL){
+      SamplePred(fit = fit,
+                 y = y,
+                 Z = Z,
+                 X = X,
+                 modifier = modifier,
+                 Znew = znew,
+                 Xnew = matrix(0, nrow = nrow(znew), ncol = ncol(X)),
+                 mod_new = modnew,
+                 sel = sel)
+      
+    }
+    riskSummary <- riskSummary.approx
+  } else {
+    stop("method must be one of c('approx', 'exact', 'fullpost')")
   }
   
   riskSummary(point1 = point1,
@@ -300,7 +245,7 @@ VarRiskSummary <- function (whichz = 1, fit, y = NULL, Z = NULL, X = NULL,
 
 #' Single Variable Risk Summaries
 #' 
-#' Compute summaries of the risks associated with a change in a single variable in \code{Z} from a single level (quantile) to a second level (quantile), for the other variables in \code{Z} fixed to a specific level (quantile)
+#' Compute summaries of the risks associated with a change in a single variable in \code{Z} from a single level (quantile) to a second level (quantile), for the other variables in \code{Z} fixed to a specific level (quantile) for a given modifier level
 #' 
 #' @inheritParams kmbayes
 #' @inheritParams ExtractEsts
@@ -316,25 +261,25 @@ VarRiskSummary <- function (whichz = 1, fit, y = NULL, Z = NULL, X = NULL,
 #' @return a data frame containing the (posterior mean) estimate and posterior standard deviation of the single-predictor risk measures
 #' 
 #' @examples
-#' ## First generate dataset
-#' set.seed(111)
-#' dat <- SimData(n = 50, M = 4)
-#' y <- dat$y
-#' Z <- dat$Z
-#' X <- dat$X
+#' ## First generate data set
+#' y <- ex_data$y
+#' Z <- ex_data$Z
+#' modifier <- ex_data$X$Sex
+#' X_full <- ex_data$X[,-2] #remove Sex from the covariate matrix because it is the modifier
+#' X <- model.matrix(~., data=X_full)[,-1] #create design matrix to account for factor variables, remove the intercept column
 #' 
-#' ## Fit model with component-wise variable selection
-#' ## Using only 100 iterations to make example run quickly
+#' ## Fit model 
+#' ## Using only 10 iterations to make example run quickly
 #' ## Typically should use a large number of iterations for inference
 #' set.seed(111)
-#' fitkm <- kmbayes(y = y, Z = Z, X = X, iter = 100, verbose = FALSE, varsel = TRUE)
+#' fitkm <- kmbayes(y = y, Z = Z, modifier = modifier, X = X, iter = 10, verbose = FALSE) 
 #' 
-#' risks.singvar <- SingVarRiskSummaries(fit = fitkm, method = "exact")
+#' risks.singvar <- SingVarRiskSummaries(fitkm, qs.diff = c(0.25, 0.75), q.fixed = 0.5, m.fixed = "male", method = "exact")
 SingVarRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL, 
                                  modifier = NULL, which.z = 1:ncol(Z),
                                  qs.diff = c(0.25, 0.75), 
                                  q.fixed = c(0.25, 0.50, 0.75), 
-                                 m.fixed = NULL, method = "approx", 
+                                 m.fixed = NULL, method = "fullpost", 
                                  sel = NULL, z.names = colnames(Z), ...) {
   
   if (inherits(fit, "bkmrfit")) {
@@ -377,8 +322,18 @@ SingVarRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
                              method = method, 
                              m.fixed = m.fixed, 
                              sel = sel) 
-      df0 <- dplyr::tibble(q.fixed = q.fixed[i], variable = z.names[j], 
-                           est = risk["est"], sd = risk["sd"])
+      if("sd" %in% names(risk)){#is sd returned
+        df0 <- dplyr::tibble(q.fixed = q.fixed[i], 
+                             variable = z.names[j], 
+                             est = risk["est"], 
+                             sd = risk["sd"])
+      }else{#if lb ub returned
+        df0 <- dplyr::tibble(q.fixed = q.fixed[i], 
+                             variable = z.names[j], 
+                             est = risk["est"],  
+                             lb = risk["lb.2.5%"], 
+                             ub = risk["ub.97.5%"])
+      }
       df <- dplyr::bind_rows(df, df0)
     }
   }
@@ -395,7 +350,7 @@ SingVarIntSummary <- function(whichz = 1, fit, y = NULL, Z = NULL,
                               X = NULL, modifier = NULL, 
                               qs.diff = c(0.25, 0.75), 
                               qs.fixed = c(0.25, 0.75), mod.diff = NULL,
-                              method = "approx", sel = NULL, ...) {
+                              method = "fullpost", sel = NULL, ...) {
   
   if (inherits(fit, "bkmrfit")) {
     if (is.null(y)) y <- fit$y
@@ -474,7 +429,7 @@ SingVarIntSummary <- function(whichz = 1, fit, y = NULL, Z = NULL,
 
 #' Single Variable Interaction Summaries
 #' 
-#' Compare the single-predictor health risks when all of the other predictors in Z are fixed to their a specific quantile to when all of the other predictors in Z are fixed to their a second specific quantile. For interaction overall effect, set \code{mod.diff} to two separate levels of the modifier, and make \code{qs.diff} and \code{qs.fixed} the same vector. 
+#' Compare the single-predictor health risks when all of the other predictors in Z are fixed to their a specific quantile to when all of the other predictors in Z are fixed to their a second specific quantile. For between-group overall effect estimates, set \code{mod.diff} to two separate levels of the modifier, and make \code{qs.diff} and \code{qs.fixed} the same vector. 
 #' @inheritParams kmbayes
 #' @inheritParams ExtractEsts
 #' @inheritParams SingVarRiskSummaries
@@ -487,25 +442,25 @@ SingVarIntSummary <- function(whichz = 1, fit, y = NULL, Z = NULL,
 #' @return a data frame containing the (posterior mean) estimate and posterior standard deviation of the single-predictor risk measures
 #' 
 #' @examples
-#' ## First generate dataset
-#' set.seed(111)
-#' dat <- SimData(n = 50, M = 4)
-#' y <- dat$y
-#' Z <- dat$Z
-#' X <- dat$X
+#' ## First generate data set
+#' y <- ex_data$y
+#' Z <- ex_data$Z
+#' modifier <- ex_data$X$Sex
+#' X_full <- ex_data$X[,-2] #remove Sex from the covariate matrix because it is the modifier
+#' X <- model.matrix(~., data=X_full)[,-1] #create design matrix to account for factor variables, remove the intercept column
 #' 
-#' ## Fit model with component-wise variable selection
-#' ## Using only 100 iterations to make example run quickly
+#' ## Fit model 
+#' ## Using only 10 iterations to make example run quickly
 #' ## Typically should use a large number of iterations for inference
 #' set.seed(111)
-#' fitkm <- kmbayes(y = y, Z = Z, X = X, iter = 100, verbose = FALSE, varsel = TRUE)
+#' fitkm <- kmbayes(y = y, Z = Z, modifier = modifier, X = X, iter = 10, verbose = FALSE) 
 #' 
-#' risks.int <- SingVarIntSummaries(fit = fitkm, method = "exact")
+#' risks.int <- SingVarIntSummaries(fitkm, qs.diff = c(0.25, 0.75), qs.fixed = c(0.5,0.5), mod.diff = c("male", "female"), method = "exact")
 SingVarIntSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
                                 modifier = NULL, which.z = 1:ncol(Z), 
                                 qs.diff = c(0.25, 0.75), 
                                 qs.fixed = c(0.25, 0.75), 
-                                mod.diff = NULL, method = "approx", 
+                                mod.diff = NULL, method = "fullpost", 
                                 sel = NULL, z.names = colnames(Z), ...) {
   
   if (inherits(fit, "bkmrfit")) {
@@ -557,7 +512,7 @@ SingVarIntSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
 OverallIntSummary <- function(whichz = 1, fit, y = NULL, Z = NULL, 
                               X = NULL, modifier = NULL, 
                               qs = 0.25, q.fixed = 0.5, mod.diff = NULL,
-                              method = "approx", sel = NULL, ...) {
+                              method = "fullpost", sel = NULL, ...) {
   
   if (inherits(fit, "bkmrfit")) {
     if (is.null(y)) y <- fit$y
@@ -634,24 +589,24 @@ OverallIntSummary <- function(whichz = 1, fit, y = NULL, Z = NULL,
 #' @return a data frame containing the (posterior mean) estimate and posterior standard deviation of the single-predictor risk measures
 #' 
 #' @examples
-#' ## First generate dataset
-#' set.seed(111)
-#' dat <- SimData(n = 50, M = 4)
-#' y <- dat$y
-#' Z <- dat$Z
-#' X <- dat$X
+#' ## First generate data set
+#' y <- ex_data$y
+#' Z <- ex_data$Z
+#' modifier <- ex_data$X$Sex
+#' X_full <- ex_data$X[,-2] #remove Sex from the covariate matrix because it is the modifier
+#' X <- model.matrix(~., data=X_full)[,-1] #create design matrix to account for factor variables, remove the intercept column
 #' 
-#' ## Fit model with component-wise variable selection
-#' ## Using only 100 iterations to make example run quickly
+#' ## Fit model 
+#' ## Using only 10 iterations to make example run quickly
 #' ## Typically should use a large number of iterations for inference
 #' set.seed(111)
-#' fitkm <- kmbayes(y = y, Z = Z, X = X, iter = 100, verbose = FALSE, varsel = TRUE)
+#' fitkm <- kmbayes(y = y, Z = Z, modifier = modifier, X = X, iter = 10, verbose = FALSE) 
 #' 
-#' risks.int <- SingVarIntSummaries(fit = fitkm, method = "exact")
+#' risks.int <- OverallIntSummaries(fitkm, qs = c(0.25, 0.75), q.fixed = 0.5, mod.diff = c("male", "female"), method = "fullpost")
 OverallIntSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
                                 modifier = NULL, which.z = 1:ncol(Z), 
                                 qs = seq(0.25, 0.75,0.05), mod.diff,
-                                q.fixed = 0.5, method = "approx", 
+                                q.fixed = 0.5, method = "fullpost", 
                                 sel = NULL, z.names = colnames(Z), ...) {
   
   if (inherits(fit, "bkmrfit")) {
