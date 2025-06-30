@@ -114,22 +114,22 @@ PredictorResponseUnivarVar <- function(whichz = 1, fit, y, Z, X, modifier, metho
 #' @return a long data frame with the predictor name, predictor value, posterior mean estimate, and posterior standard deviation
 #' 
 #' @examples
-#' ## First generate dataset
-#' set.seed(111)
-#' dat <- SimData(n = 50, M = 4)
-#' y <- dat$y
-#' Z <- dat$Z
-#' X <- dat$X
+#' ## First generate data set
+#' y <- ex_data$y
+#' Z <- ex_data$Z
+#' modifier <- ex_data$X$Sex
+#' X_full <- ex_data$X[,-2] #remove Sex from the covariate matrix because it is the modifier
+#' X <- model.matrix(~., data=X_full)[,-1] #create design matrix to account for factor variables, remove the intercept column
 #' 
-#' ## Fit model with component-wise variable selection
-#' ## Using only 100 iterations to make example run quickly
+#' ## Fit model 
+#' ## Using only 10 iterations to make example run quickly
 #' ## Typically should use a large number of iterations for inference
 #' set.seed(111)
-#' fitkm <- kmbayes(y = y, Z = Z, X = X, iter = 100, verbose = FALSE, varsel = TRUE)
-#' pred.resp.univar <- PredictorResponseUnivar(fit = fitkm)
+#' fitkm <- kmbayes(y = y, Z = Z, modifier = modifier, X = X, iter = 10, verbose = FALSE) 
+#' pred.resp.univar <- PredictorResponseUnivar(fit = fitkm, method = "fullpost", q.fixed = 0.5)
 PredictorResponseUnivar <- function(fit, y = NULL, Z = NULL, X = NULL, 
                                     modifier = NULL, which.z = 1:ncol(Z),
-                                    which.mod = NULL, method = "approx",
+                                    which.mod = NULL, method = "exact",
                                     ngrid = 50, q.fixed = 0.5, sel = NULL, 
                                     min.plot.dist = Inf, center = TRUE, 
                                     z.names = colnames(Z), ...) {
@@ -298,7 +298,7 @@ PredictorResponseBivarPair <- function(fit, y = NULL, Z = NULL, X = NULL,
 #' @param z.pairs data frame showing which pairs of predictors to plot
 #' @param ngrid number of grid points in each dimension
 #' @param verbose TRUE or FALSE: flag of whether to print intermediate output to the screen
-#' @details For guided examples, go to \url{https://jenfb.github.io/bkmr/overview.html}
+#' @details For guided examples, see vignette(bkmrGSOverview)
 #' @export
 #' 
 #' @return a long data frame with the name of the first predictor, the name of the second predictor, the value of the first predictor, the value of the second predictor, the posterior mean estimate, and the posterior standard deviation of the estimated exposure response function
@@ -335,23 +335,10 @@ PredictorResponseBivar <- function(fit, y = NULL, Z = NULL, X = NULL,
     if (is.null(modifier)) modifier <- fit$modifier
   }
   
-  #convert modifier to factor and construct contrast matrix
   if(!is.null(modifier)){
-    orig_modifier <- modifier
-    modifier <- as.factor(modifier)
-    modifier <- as.matrix(model.matrix(~modifier)[,-1])
+    stop("Function not supported for models with effect modification.")
   }
   
-  kernel.method <- fit$kernel.method
-  if(kernel.method == "one"){
-    kern_modifier <- NULL
-  }else if(kernel.method == "two"){
-    kern_modifier <- modifier
-  }
-  
-  if(!is.null(modifier) & is.null(mod.fixed)){
-    stop("Modification detected. Must provide modifier value to fix using the 'mod.fixed' argument.")
-  }
   
   if (is.null(z.names)) {
     z.names <- colnames(Z)
@@ -416,7 +403,7 @@ PredictorResponseBivar <- function(fit, y = NULL, Z = NULL, X = NULL,
 #' @param pred.resp.df object obtained from running the function \code{\link{PredictorResponseBivar}}
 #' @param qs vector of quantiles at which to fix the second variable
 #' @param both_pairs flag indicating whether, if \code{h(z1)} is being plotted for z2 fixed at different levels, that they should be plotted in the reverse order as well (for \code{h(z2)} at different levels of z1) 
-#' @details For guided examples, go to \url{https://jenfb.github.io/bkmr/overview.html}
+#' @details For guided examples, see vignette(bkmrGSOverview)
 #' 
 #' @return a long data frame with the name of the first predictor, the name of the second predictor, the value of the first predictor, the quantile at which the second predictor is fixed, the posterior mean estimate, and the posterior standard deviation of the estimated exposure response function
 #'  
@@ -442,6 +429,7 @@ PredictorResponseBivar <- function(fit, y = NULL, Z = NULL, X = NULL,
 PredictorResponseBivarLevels <- function(pred.resp.df, Z = NULL, 
                                          qs = c(0.25, 0.5, 0.75), 
                                          both_pairs = TRUE, z.names = NULL) {
+
   #var.pairs <- dplyr::distinct(dplyr::select_(pred.resp.df, ~variable1, ~variable2))
   var.pairs <- dplyr::distinct(dplyr::select_at(pred.resp.df, c("variable1", "variable2")))
   if (both_pairs) {
