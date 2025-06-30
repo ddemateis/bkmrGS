@@ -1,5 +1,5 @@
 .onAttach <- function(libname, pkgname) {
-  packageStartupMessage("For guided examples, go to 'https://jenfb.github.io/bkmr/overview.html'")
+  packageStartupMessage("For guided examples, see vignette(bkmrGSOverview). This package is based on the bkmr package version 0.2.2. For a BKMR analysis without effect modification, use the latest bkmr package.")
 }
 
 release_questions <- function() {
