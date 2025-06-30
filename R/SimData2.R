@@ -28,7 +28,6 @@ HFun <- function (z, opt = 1){
 #'
 #' @export
 #'
-#' @inheritParams kmbayes
 #' @param scenario Simulation scenario option: "none" for no modification between two groups, "oneGroup" for one group effect out of two groups, "scaled2" for one groups having a scaled effect of the other group with 2 exposures, "scaled3" is the same but for 3 exposures, and "multi" for one group with no effect and the other two groups having a scaled effect
 #' @param SNR signal-to-noise ratio
 #' @param mod_DGM indicator for including modifier in data generating mechanism
