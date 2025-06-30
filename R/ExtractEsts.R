@@ -24,18 +24,18 @@ SummarySamps <- function(s, q = c(0.025, 0.25, 0.5, 0.75, 0.975)) {
 #' @return a list where each component is a data frame containing the summary statistics of the posterior distribution of one of the parameters (or vector of parameters) being estimated
 #' 
 #' @examples
-#' ## First generate dataset
-#' set.seed(111)
-#' dat <- SimData(n = 50, M = 4)
-#' y <- dat$y
-#' Z <- dat$Z
-#' X <- dat$X
+#' ## First generate data set
+#' y <- ex_data$y
+#' Z <- ex_data$Z
+#' modifier <- ex_data$X$Sex
+#' X_full <- ex_data$X[,-2] #remove Sex from the covariate matrix because it is the modifier
+#' X <- model.matrix(~., data=X_full)[,-1] #create design matrix to account for factor variables, remove the intercept column
 #' 
-#' ## Fit model with component-wise variable selection
-#' ## Using only 100 iterations to make example run quickly
+#' ## Fit model 
+#' ## Using only 10 iterations to make example run quickly
 #' ## Typically should use a large number of iterations for inference
 #' set.seed(111)
-#' fitkm <- kmbayes(y = y, Z = Z, X = X, iter = 100, verbose = FALSE, varsel = TRUE)
+#' fitkm <- kmbayes(y = y, Z = Z, modifier = modifier, X = X, iter = 10, verbose = FALSE) 
 #' 
 #' ests <- ExtractEsts(fitkm)
 #' names(ests)
@@ -113,18 +113,18 @@ ExtractEsts <- function(fit, q = c(0.025, 0.25, 0.5, 0.75, 0.975), sel = NULL) {
 #' @return a list where each component contains the posterior samples of one of the parameters (or vector of parameters) being estimated
 #' 
 #' @examples
-#' ## First generate dataset
-#' set.seed(111)
-#' dat <- SimData(n = 50, M = 4)
-#' y <- dat$y
-#' Z <- dat$Z
-#' X <- dat$X
+#' ## First generate data set
+#' y <- ex_data$y
+#' Z <- ex_data$Z
+#' modifier <- ex_data$X$Sex
+#' X_full <- ex_data$X[,-2] #remove Sex from the covariate matrix because it is the modifier
+#' X <- model.matrix(~., data=X_full)[,-1] #create design matrix to account for factor variables, remove the intercept column
 #' 
-#' ## Fit model with component-wise variable selection
-#' ## Using only 100 iterations to make example run quickly
+#' ## Fit model 
+#' ## Using only 10 iterations to make example run quickly
 #' ## Typically should use a large number of iterations for inference
 #' set.seed(111)
-#' fitkm <- kmbayes(y = y, Z = Z, X = X, iter = 100, verbose = FALSE, varsel = TRUE)
+#' fitkm <- kmbayes(y = y, Z = Z, modifier = modifier, X = X, iter = 10, verbose = FALSE) 
 #' 
 #' samps <- ExtractSamps(fitkm)
 ExtractSamps <- function(fit, sel = NULL) {
