@@ -48,25 +48,26 @@ a matrix with the posterior samples at the new points
 Obtains posterior samples of \code{E(Y) = h(Znew) + beta*Xnew} or of \code{g^{-1}[E(y)]}
 }
 \details{
-For guided examples, go to \url{https://jenfb.github.io/bkmr/overview.html}
+For guided examples, see vignette(bkmrGSOverview)
 }
 \examples{
-set.seed(111)
-dat <- SimData(n = 50, M = 4)
-y <- dat$y
-Z <- dat$Z
-X <- dat$X
+## First generate data set
+y <- ex_data$y
+Z <- ex_data$Z
+modifier <- ex_data$X$Sex
+X_full <- ex_data$X[,-2] #remove Sex from the covariate matrix because it is the modifier
+X <- model.matrix(~., data=X_full)[,-1] #create design matrix to account for factor variables, remove the intercept column
 
-## Fit model with component-wise variable selection
-## Using only 100 iterations to make example run quickly
+## Fit model 
+## Using only 10 iterations to make example run quickly
 ## Typically should use a large number of iterations for inference
 set.seed(111)
-fitkm <- kmbayes(y = y, Z = Z, X = X, iter = 100, verbose = FALSE, varsel = TRUE)
+fitkm <- kmbayes(y = y, Z = Z, modifier = modifier, X = X, iter = 10, verbose = FALSE) 
 
 med_vals <- apply(Z, 2, median)
 Znew <- matrix(med_vals, nrow = 1)
-h_true <- dat$HFun(Znew)
+mod_new <- "male"
 set.seed(111)
-samps3 <- SamplePred(fitkm, Znew = Znew, Xnew = cbind(0))
+samps3 <- SamplePred(fitkm, Znew = Znew, mod_new = mod_new, Xnew = matrix(rep(0,ncol(X)),ncol=ncol(X)))
 head(samps3)
 }

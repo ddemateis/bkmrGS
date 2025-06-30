@@ -14,7 +14,7 @@ OverallIntSummaries(
   qs = seq(0.25, 0.75, 0.05),
   mod.diff,
   q.fixed = 0.5,
-  method = "approx",
+  method = "fullpost",
   sel = NULL,
   z.names = colnames(Z),
   ...
@@ -39,7 +39,7 @@ OverallIntSummaries(
 
 \item{q.fixed}{a second quantile at which to compare the estimated \code{h} function}
 
-\item{method}{method for obtaining posterior summaries at a vector of new points. Options are "approx" and "exact"; defaults to "approx", which is faster particularly for large datasets; see details}
+\item{method}{method for obtaining posterior summaries at a vector of new points. Options are "approx" and "exact"; defaults to "approx", which is faster particularly for large datasets; see details. Only "exact" is supported now}
 
 \item{sel}{logical expression indicating samples to keep; defaults to keeping the second half of all samples}
 
@@ -58,21 +58,21 @@ Compare the overall effect difference between groups for models with modificatio
   \item If \code{method == "approx"}, the argument \code{sel} defaults to the second half of the MCMC iterations.
   \item If \code{method == "exact"}, the argument \code{sel} defaults to keeping every 10 iterations after dropping the first 50\% of samples, or if this results in fewer than 100 iterations, than 100 iterations are kept
 }
-For guided examples and additional information, go to \url{https://jenfb.github.io/bkmr/overview.html}
+For guided examples and additional information, see vignette(bkmrGSOverview)
 }
 \examples{
-## First generate dataset
-set.seed(111)
-dat <- SimData(n = 50, M = 4)
-y <- dat$y
-Z <- dat$Z
-X <- dat$X
+## First generate data set
+y <- ex_data$y
+Z <- ex_data$Z
+modifier <- ex_data$X$Sex
+X_full <- ex_data$X[,-2] #remove Sex from the covariate matrix because it is the modifier
+X <- model.matrix(~., data=X_full)[,-1] #create design matrix to account for factor variables, remove the intercept column
 
-## Fit model with component-wise variable selection
-## Using only 100 iterations to make example run quickly
+## Fit model 
+## Using only 10 iterations to make example run quickly
 ## Typically should use a large number of iterations for inference
 set.seed(111)
-fitkm <- kmbayes(y = y, Z = Z, X = X, iter = 100, verbose = FALSE, varsel = TRUE)
+fitkm <- kmbayes(y = y, Z = Z, modifier = modifier, X = X, iter = 10, verbose = FALSE) 
 
-risks.int <- SingVarIntSummaries(fit = fitkm, method = "exact")
+risks.int <- OverallIntSummaries(fitkm, qs = c(0.25, 0.75), q.fixed = 0.5, mod.diff = c("male", "female"), method = "fullpost")
 }

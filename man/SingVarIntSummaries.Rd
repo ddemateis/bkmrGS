@@ -14,7 +14,7 @@ SingVarIntSummaries(
   qs.diff = c(0.25, 0.75),
   qs.fixed = c(0.25, 0.75),
   mod.diff = NULL,
-  method = "approx",
+  method = "fullpost",
   sel = NULL,
   z.names = colnames(Z),
   ...
@@ -39,7 +39,7 @@ SingVarIntSummaries(
 
 \item{mod.diff}{vector of two modifier values at which to compute the single-predictor risk summary (only for models with modification.)}
 
-\item{method}{method for obtaining posterior summaries at a vector of new points. Options are "approx" and "exact"; defaults to "approx", which is faster particularly for large datasets; see details}
+\item{method}{method for obtaining posterior summaries at a vector of new points. Options are "approx" and "exact"; defaults to "approx", which is faster particularly for large datasets; see details. Only "exact" is supported now}
 
 \item{sel}{logical expression indicating samples to keep; defaults to keeping the second half of all samples}
 
@@ -51,28 +51,28 @@ SingVarIntSummaries(
 a data frame containing the (posterior mean) estimate and posterior standard deviation of the single-predictor risk measures
 }
 \description{
-Compare the single-predictor health risks when all of the other predictors in Z are fixed to their a specific quantile to when all of the other predictors in Z are fixed to their a second specific quantile. For interaction overall effect, set \code{mod.diff} to two separate levels of the modifier, and make \code{qs.diff} and \code{qs.fixed} the same vector.
+Compare the single-predictor health risks when all of the other predictors in Z are fixed to their a specific quantile to when all of the other predictors in Z are fixed to their a second specific quantile. For between-group overall effect estimates, set \code{mod.diff} to two separate levels of the modifier, and make \code{qs.diff} and \code{qs.fixed} the same vector.
 }
 \details{
 \itemize{
   \item If \code{method == "approx"}, the argument \code{sel} defaults to the second half of the MCMC iterations.
   \item If \code{method == "exact"}, the argument \code{sel} defaults to keeping every 10 iterations after dropping the first 50\% of samples, or if this results in fewer than 100 iterations, than 100 iterations are kept
 }
-For guided examples and additional information, go to \url{https://jenfb.github.io/bkmr/overview.html}
+For guided examples and additional information, see vignette(bkmrGSOverview)
 }
 \examples{
-## First generate dataset
-set.seed(111)
-dat <- SimData(n = 50, M = 4)
-y <- dat$y
-Z <- dat$Z
-X <- dat$X
+## First generate data set
+y <- ex_data$y
+Z <- ex_data$Z
+modifier <- ex_data$X$Sex
+X_full <- ex_data$X[,-2] #remove Sex from the covariate matrix because it is the modifier
+X <- model.matrix(~., data=X_full)[,-1] #create design matrix to account for factor variables, remove the intercept column
 
-## Fit model with component-wise variable selection
-## Using only 100 iterations to make example run quickly
+## Fit model 
+## Using only 10 iterations to make example run quickly
 ## Typically should use a large number of iterations for inference
 set.seed(111)
-fitkm <- kmbayes(y = y, Z = Z, X = X, iter = 100, verbose = FALSE, varsel = TRUE)
+fitkm <- kmbayes(y = y, Z = Z, modifier = modifier, X = X, iter = 10, verbose = FALSE) 
 
-risks.int <- SingVarIntSummaries(fit = fitkm, method = "exact")
+risks.int <- SingVarIntSummaries(fitkm, qs.diff = c(0.25, 0.75), qs.fixed = c(0.5,0.5), mod.diff = c("male", "female"), method = "exact")
 }

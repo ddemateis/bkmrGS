@@ -39,7 +39,7 @@ No return value, generates plot
 Trace plot
 }
 \details{
-For guided examples, go to \url{https://jenfb.github.io/bkmr/overview.html}
+For guided examples, see vignette(bkmrGSOverview)
 }
 \examples{
 ## First generate dataset

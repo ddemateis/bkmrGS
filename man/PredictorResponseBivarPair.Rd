@@ -41,7 +41,7 @@ PredictorResponseBivarPair(
 
 \item{whichz3}{vector identifying the third predictor that will be set to a pre-specified fixed quantile (determined by \code{prob})}
 
-\item{method}{method for obtaining posterior summaries at a vector of new points. Options are "approx" and "exact"; defaults to "approx", which is faster particularly for large datasets; see details}
+\item{method}{method for obtaining posterior summaries at a vector of new points. Options are "approx" and "exact"; defaults to "approx", which is faster particularly for large datasets; see details. Only "exact" is supported now}
 
 \item{prob}{pre-specified quantile to set the third predictor (determined by \code{whichz3}); defaults to 0.5 (50th percentile)}
 

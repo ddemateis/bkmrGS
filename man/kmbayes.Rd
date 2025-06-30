@@ -21,7 +21,6 @@ kmbayes(
   ztest = NULL,
   rmethod = "varying",
   est.h = FALSE,
-  modtest = FALSE,
   kernel.method = "two",
   gs.tau = TRUE,
   gs.sig = FALSE
@@ -60,8 +59,6 @@ kmbayes(
 
 \item{est.h}{TRUE or FALSE: indicator for whether to sample from the posterior distribution of the subject-specific effects h_i within the main sampler. This will slow down the model fitting.}
 
-\item{modtest}{TRUE or FALSE: indicator for whether to perform selection on the modifier}
-
 \item{kernel.method}{When \code{modifier = "TRUE"}, use \code{kernel.method = "one"} for the standard approach or \code{kernel.method = "two"} for a group-separable approach with a categorical modifier}
 
 \item{gs.tau}{TRUE or FALSE: indicator for whether to use group-specific tau parameters, only available for the group-separable method (\code{kernel.method = "two"})}
@@ -76,21 +73,21 @@ an object of class "bkmrfit" (containing the posterior samples from the model fi
 }
 }
 \description{
-Fits the Bayesian kernel machine regression (BKMR) model using Markov chain Monte Carlo (MCMC) methods.
+Fits the Bayesian kernel machine regression (BKMR) model with group-separable kernel using Markov chain Monte Carlo (MCMC) methods.
 }
 \examples{
 ## First generate data set
-set.seed(111)
-dat <- SimData(n = 50, M = 4)
-y <- dat$y
-Z <- dat$Z
-X <- dat$X
+y <- ex_data$y
+Z <- ex_data$Z
+modifier <- ex_data$X$Sex
+X_full <- ex_data$X[,-2] #remove Sex from the covariate matrix because it is the modifier
+X <- model.matrix(~., data=X_full)[,-1] #create design matrix to account for factor variables, remove the intercept column
 
-## Fit model with component-wise variable selection
-## Using only 100 iterations to make example run quickly
+## Fit model 
+## Using only 10 iterations to make example run quickly
 ## Typically should use a large number of iterations for inference
 set.seed(111)
-fitkm <- kmbayes(y = y, Z = Z, X = X, iter = 100, verbose = FALSE, varsel = TRUE)
+fitkm <- kmbayes(y = y, Z = Z, modifier = modifier, X = X, iter = 10, verbose = FALSE) 
 }
 \references{
 Bobb, JF, Valeri L, Claus Henn B, Christiani DC, Wright RO, Mazumdar M, Godleski JJ, Coull BA (2015). Bayesian Kernel Machine Regression for Estimating the Health Effects of Multi-Pollutant Mixtures. Biostatistics 16, no. 3: 493-508.
@@ -98,5 +95,5 @@ Bobb, JF, Valeri L, Claus Henn B, Christiani DC, Wright RO, Mazumdar M, Godleski
 Banerjee S, Gelfand AE, Finley AO, Sang H (2008). Gaussian predictive process models for large spatial data sets. Journal of the Royal Statistical Society: Series B (Statistical Methodology), 70(4), 825-848.
 }
 \seealso{
-For guided examples, go to \url{https://jenfb.github.io/bkmr/overview.html}
+For guided examples, see vignette(bkmrGSOverview)
 }

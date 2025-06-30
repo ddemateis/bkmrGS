@@ -36,7 +36,7 @@ PredictorResponseBivar(
 
 \item{z.pairs}{data frame showing which pairs of predictors to plot}
 
-\item{method}{method for obtaining posterior summaries at a vector of new points. Options are "approx" and "exact"; defaults to "approx", which is faster particularly for large datasets; see details}
+\item{method}{method for obtaining posterior summaries at a vector of new points. Options are "approx" and "exact"; defaults to "approx", which is faster particularly for large datasets; see details. Only "exact" is supported now}
 
 \item{ngrid}{number of grid points in each dimension}
 
@@ -61,7 +61,7 @@ a long data frame with the name of the first predictor, the name of the second p
 Predict the exposure-response function at a new grid of points
 }
 \details{
-For guided examples, go to \url{https://jenfb.github.io/bkmr/overview.html}
+For guided examples, see vignette(bkmrGSOverview)
 }
 \examples{
 ## First generate dataset

@@ -20,7 +20,7 @@ a data frame with the variable-specific PIPs for BKMR fit with component-wise va
 Extract posterior inclusion probabilities (PIPs) from Bayesian Kernel Machine Regression (BKMR) model fit
 }
 \details{
-For guided examples, go to \url{https://jenfb.github.io/bkmr/overview.html}
+For guided examples, see vignette(bkmrGSOverview)
 }
 \examples{
 ## First generate dataset

@@ -30,7 +30,7 @@ a long data frame with the name of the first predictor, the name of the second p
 Function to plot the \code{h} function of a particular variable at different levels (quantiles) of a second variable
 }
 \details{
-For guided examples, go to \url{https://jenfb.github.io/bkmr/overview.html}
+For guided examples, see vignette(bkmrGSOverview)
 }
 \examples{
 ## First generate dataset

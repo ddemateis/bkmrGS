@@ -13,7 +13,7 @@ ComputePostmeanHnew(
   Znew = NULL,
   mod_new = NULL,
   sel = NULL,
-  method = "approx"
+  method = "exact"
 )
 }
 \arguments{
@@ -33,7 +33,7 @@ ComputePostmeanHnew(
 
 \item{sel}{selects which iterations of the MCMC sampler to use for inference; see details}
 
-\item{method}{method for obtaining posterior summaries at a vector of new points. Options are "approx" and "exact"; defaults to "approx", which is faster particularly for large datasets; see details}
+\item{method}{method for obtaining posterior summaries at a vector of new points. Options are "approx" and "exact"; defaults to "approx", which is faster particularly for large datasets; see details. Only "exact" is supported now}
 }
 \value{
 a list of length two containing the posterior mean vector and posterior variance matrix
@@ -46,24 +46,25 @@ Compute the posterior mean and variance of \code{h} at a new predictor values
   \item If \code{method == "approx"}, the argument \code{sel} defaults to the second half of the MCMC iterations.
   \item If \code{method == "exact"}, the argument \code{sel} defaults to keeping every 10 iterations after dropping the first 50\% of samples, or if this results in fewer than 100 iterations, than 100 iterations are kept
 }
-For guided examples and additional information, go to \url{https://jenfb.github.io/bkmr/overview.html}
+For guided examples and additional information, see vignette(bkmrGSOverview)
 }
 \examples{
-set.seed(111)
-dat <- SimData(n = 50, M = 4)
-y <- dat$y
-Z <- dat$Z
-X <- dat$X
+## First generate data set
+y <- ex_data$y
+Z <- ex_data$Z
+modifier <- ex_data$X$Sex
+X_full <- ex_data$X[,-2] #remove Sex from the covariate matrix because it is the modifier
+X <- model.matrix(~., data=X_full)[,-1] #create design matrix to account for factor variables, remove the intercept column
 
-## Fit model with component-wise variable selection
-## Using only 100 iterations to make example run quickly
+## Fit model 
+## Using only 10 iterations to make example run quickly
 ## Typically should use a large number of iterations for inference
 set.seed(111)
-fitkm <- kmbayes(y = y, Z = Z, X = X, iter = 100, verbose = FALSE, varsel = TRUE)
+fitkm <- kmbayes(y = y, Z = Z, modifier = modifier, X = X, iter = 10, verbose = FALSE) 
+summary(fitkm)
 
 med_vals <- apply(Z, 2, median)
 Znew <- matrix(med_vals, nrow = 1)
-h_true <- dat$HFun(Znew)
-h_est1 <- ComputePostmeanHnew(fitkm, Znew = Znew, method = "approx")
-h_est2 <- ComputePostmeanHnew(fitkm, Znew = Znew, method = "exact")
+mod_new <- "male"
+h_est <- ComputePostmeanHnew(fitkm, Znew = Znew, mod_new = mod_new, method = "exact")
 }
