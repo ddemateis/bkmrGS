@@ -54,7 +54,8 @@ interactionSummary.approx <- function(newz.q1, newz.q2, modnew.1, modnew.2, pred
 #' Z <- ex_data$Z
 #' modifier <- ex_data$X$Sex
 #' X_full <- ex_data$X[,-2] #remove Sex from the covariate matrix because it is the modifier
-#' X <- model.matrix(~., data=X_full)[,-1] #create design matrix to account for factor variables, remove the intercept column
+#' #create design matrix to account for factor variables, remove the intercept column
+#' X <- model.matrix(~., data=X_full)[,-1] 
 #' 
 #' ## Fit model 
 #' ## Using only 10 iterations to make example run quickly
@@ -62,7 +63,9 @@ interactionSummary.approx <- function(newz.q1, newz.q2, modnew.1, modnew.2, pred
 #' set.seed(111)
 #' fitkm <- kmbayes(y = y, Z = Z, modifier = modifier, X = X, iter = 10, verbose = FALSE) 
 #' 
-#' risks.overall <- OverallRiskSummaries(fitkm, qs = c(0.25, 0.75), q.fixed = 0.5, m.fixed = "male", method = "fullpost")
+#' risks.overall <- OverallRiskSummaries(fitkm, qs = c(0.25, 0.75), 
+#' q.fixed = 0.5, 
+#' m.fixed = "male", method = "fullpost")
 OverallRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL, 
                                  modifier = NULL, 
                                  qs = seq(0.25, 0.75, by = 0.05), 
@@ -266,7 +269,8 @@ VarRiskSummary <- function (whichz = 1, fit, y = NULL, Z = NULL, X = NULL,
 #' Z <- ex_data$Z
 #' modifier <- ex_data$X$Sex
 #' X_full <- ex_data$X[,-2] #remove Sex from the covariate matrix because it is the modifier
-#' X <- model.matrix(~., data=X_full)[,-1] #create design matrix to account for factor variables, remove the intercept column
+#' #create design matrix to account for factor variables, remove the intercept column
+#' X <- model.matrix(~., data=X_full)[,-1] 
 #' 
 #' ## Fit model 
 #' ## Using only 10 iterations to make example run quickly
@@ -274,7 +278,8 @@ VarRiskSummary <- function (whichz = 1, fit, y = NULL, Z = NULL, X = NULL,
 #' set.seed(111)
 #' fitkm <- kmbayes(y = y, Z = Z, modifier = modifier, X = X, iter = 10, verbose = FALSE) 
 #' 
-#' risks.singvar <- SingVarRiskSummaries(fitkm, qs.diff = c(0.25, 0.75), q.fixed = 0.5, m.fixed = "male", method = "exact")
+#' risks.singvar <- SingVarRiskSummaries(fitkm, qs.diff = c(0.25, 0.75), 
+#' q.fixed = 0.5, m.fixed = "male", method = "exact")
 SingVarRiskSummaries <- function(fit, y = NULL, Z = NULL, X = NULL, 
                                  modifier = NULL, which.z = 1:ncol(Z),
                                  qs.diff = c(0.25, 0.75), 
@@ -447,7 +452,8 @@ SingVarIntSummary <- function(whichz = 1, fit, y = NULL, Z = NULL,
 #' Z <- ex_data$Z
 #' modifier <- ex_data$X$Sex
 #' X_full <- ex_data$X[,-2] #remove Sex from the covariate matrix because it is the modifier
-#' X <- model.matrix(~., data=X_full)[,-1] #create design matrix to account for factor variables, remove the intercept column
+#' #create design matrix to account for factor variables, remove the intercept column
+#' X <- model.matrix(~., data=X_full)[,-1] 
 #' 
 #' ## Fit model 
 #' ## Using only 10 iterations to make example run quickly
@@ -455,7 +461,8 @@ SingVarIntSummary <- function(whichz = 1, fit, y = NULL, Z = NULL,
 #' set.seed(111)
 #' fitkm <- kmbayes(y = y, Z = Z, modifier = modifier, X = X, iter = 10, verbose = FALSE) 
 #' 
-#' risks.int <- SingVarIntSummaries(fitkm, qs.diff = c(0.25, 0.75), qs.fixed = c(0.5,0.5), mod.diff = c("male", "female"), method = "exact")
+#' risks.int <- SingVarIntSummaries(fitkm, qs.diff = c(0.25, 0.75), 
+#' qs.fixed = c(0.5,0.5), mod.diff = c("male", "female"), method = "exact")
 SingVarIntSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
                                 modifier = NULL, which.z = 1:ncol(Z), 
                                 qs.diff = c(0.25, 0.75), 
@@ -594,7 +601,8 @@ OverallIntSummary <- function(whichz = 1, fit, y = NULL, Z = NULL,
 #' Z <- ex_data$Z
 #' modifier <- ex_data$X$Sex
 #' X_full <- ex_data$X[,-2] #remove Sex from the covariate matrix because it is the modifier
-#' X <- model.matrix(~., data=X_full)[,-1] #create design matrix to account for factor variables, remove the intercept column
+#' #create design matrix to account for factor variables, remove the intercept column
+#' X <- model.matrix(~., data=X_full)[,-1] 
 #' 
 #' ## Fit model 
 #' ## Using only 10 iterations to make example run quickly
@@ -602,7 +610,8 @@ OverallIntSummary <- function(whichz = 1, fit, y = NULL, Z = NULL,
 #' set.seed(111)
 #' fitkm <- kmbayes(y = y, Z = Z, modifier = modifier, X = X, iter = 10, verbose = FALSE) 
 #' 
-#' risks.int <- OverallIntSummaries(fitkm, qs = c(0.25, 0.75), q.fixed = 0.5, mod.diff = c("male", "female"), method = "fullpost")
+#' risks.int <- OverallIntSummaries(fitkm, qs = c(0.25, 0.75), 
+#' q.fixed = 0.5, mod.diff = c("male", "female"), method = "fullpost")
 OverallIntSummaries <- function(fit, y = NULL, Z = NULL, X = NULL,
                                 modifier = NULL, which.z = 1:ncol(Z), 
                                 qs = seq(0.25, 0.75,0.05), mod.diff,

@@ -14,7 +14,7 @@ Authors@R: c(person(given = "Danielle",
                    family = "Wilson",
                    role = "aut",
                    comment = c(ORCID = "0000-0003-4774-3883")))
-Description: Implementation of a statistical approach 
+Description: Implements group-separable Bayesian Kernel Machine Regression model, a statistical approach 
   for estimating the joint health effects of multiple 
   exposures modified by a categorical variable.
 URL: https://github.com/ddemateis/bkmrGS
@@ -24,6 +24,7 @@ License: GPL-2
 LazyData: true
 Imports:
     dplyr,
+    ggplot2,
     magrittr,
     nlme,
     fields,

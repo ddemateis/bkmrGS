@@ -6,3 +6,6 @@
 ^.*\.DS_Store
 ^revdep$
 ^CRAN-SUBMISSION$
+^doc$
+^Meta$
+^.*[.]pdf$

@@ -113,7 +113,8 @@ makeVcomps <- function(r, lambda, Z, data.comps, modifier = NULL) {
 #' Z <- ex_data$Z
 #' modifier <- ex_data$X$Sex
 #' X_full <- ex_data$X[,-2] #remove Sex from the covariate matrix because it is the modifier
-#' X <- model.matrix(~., data=X_full)[,-1] #create design matrix to account for factor variables, remove the intercept column
+#' #create design matrix to account for factor variables, remove the intercept column
+#' X <- model.matrix(~., data=X_full)[,-1] 
 #' 
 #' ## Fit model 
 #' ## Using only 10 iterations to make example run quickly
@@ -652,8 +653,8 @@ kmbayes <- function(y, Z, X = NULL,
 #' Z <- ex_data$Z
 #' modifier <- ex_data$X$Sex
 #' X_full <- ex_data$X[,-2] #remove Sex from the covariate matrix because it is the modifier
-#' X <- model.matrix(~., data=X_full)[,-1] #create design matrix to account for factor variables, remove the intercept column
-#' 
+#' #create design matrix to account for factor variables, remove the intercept column
+#' X <- model.matrix(~., data=X_full)[,-1] 
 #' ## Fit model 
 #' ## Using only 10 iterations to make example run quickly
 #' ## Typically should use a large number of iterations for inference
@@ -689,7 +690,8 @@ print.bkmrfit <- function(x, digits = 5, ...) {
 #' Z <- ex_data$Z
 #' modifier <- ex_data$X$Sex
 #' X_full <- ex_data$X[,-2] #remove Sex from the covariate matrix because it is the modifier
-#' X <- model.matrix(~., data=X_full)[,-1] #create design matrix to account for factor variables, remove the intercept column
+#' #create design matrix to account for factor variables, remove the intercept column
+#' X <- model.matrix(~., data=X_full)[,-1] 
 #' 
 #' ## Fit model 
 #' ## Using only 10 iterations to make example run quickly

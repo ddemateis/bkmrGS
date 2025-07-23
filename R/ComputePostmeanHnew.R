@@ -22,7 +22,8 @@
 #' Z <- ex_data$Z
 #' modifier <- ex_data$X$Sex
 #' X_full <- ex_data$X[,-2] #remove Sex from the covariate matrix because it is the modifier
-#' X <- model.matrix(~., data=X_full)[,-1] #create design matrix to account for factor variables, remove the intercept column
+#' #create design matrix to account for factor variables, remove the intercept column
+#' X <- model.matrix(~., data=X_full)[,-1] 
 #' 
 #' ## Fit model 
 #' ## Using only 10 iterations to make example run quickly
@@ -108,6 +109,8 @@ ComputePostmeanHnew.approx <- function(fit, y = NULL, Z = NULL,
   } else if (fit$family == "binomial") {
     ycont <- ests$ystar[, "mean"]
   }
+  
+  data.comps <- fit$data.comps
   
   Kpart <- makeKpart(r, Z)
   K <- exp(-Kpart)

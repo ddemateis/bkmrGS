@@ -66,7 +66,8 @@ y <- ex_data$y
 Z <- ex_data$Z
 modifier <- ex_data$X$Sex
 X_full <- ex_data$X[,-2] #remove Sex from the covariate matrix because it is the modifier
-X <- model.matrix(~., data=X_full)[,-1] #create design matrix to account for factor variables, remove the intercept column
+#create design matrix to account for factor variables, remove the intercept column
+X <- model.matrix(~., data=X_full)[,-1] 
 
 ## Fit model 
 ## Using only 10 iterations to make example run quickly
@@ -74,5 +75,6 @@ X <- model.matrix(~., data=X_full)[,-1] #create design matrix to account for fac
 set.seed(111)
 fitkm <- kmbayes(y = y, Z = Z, modifier = modifier, X = X, iter = 10, verbose = FALSE) 
 
-risks.singvar <- SingVarRiskSummaries(fitkm, qs.diff = c(0.25, 0.75), q.fixed = 0.5, m.fixed = "male", method = "exact")
+risks.singvar <- SingVarRiskSummaries(fitkm, qs.diff = c(0.25, 0.75), 
+q.fixed = 0.5, m.fixed = "male", method = "exact")
 }

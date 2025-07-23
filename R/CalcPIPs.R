@@ -77,21 +77,6 @@ CalcPIPs <- function(fit, sel = NULL) {
 #' @details For guided examples, see vignette(bkmrGSOverview)
 #' @export
 #' 
-#' @examples
-#' ## First generate dataset
-#' set.seed(111)
-#' dat <- SimData(n = 50, M = 4)
-#' y <- dat$y
-#' Z <- dat$Z
-#' X <- dat$X
-#' 
-#' ## Fit model with component-wise variable selection
-#' ## Using only 100 iterations to make example run quickly
-#' ## Typically should use a large number of iterations for inference
-#' set.seed(111)
-#' fitkm <- kmbayes(y = y, Z = Z, X = X, iter = 100, verbose = FALSE, varsel = TRUE)
-#' 
-#' ExtractPIPs(fitkm)
 ExtractPIPs <- function(fit, sel = NULL, z.names = NULL) {
   if (inherits(fit, "bkmrfit")) {
     if (!fit$varsel) {

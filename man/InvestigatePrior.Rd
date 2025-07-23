@@ -41,14 +41,3 @@ Investigate the impact of the \code{r[m]} parameters on the smoothness of the ex
 \details{
 For guided examples, go to \url{https://jenfb.github.io/bkmr/overview.html}
 }
-\examples{
-## First generate dataset
-set.seed(111)
-dat <- SimData(n = 50, M = 4)
-y <- dat$y
-Z <- dat$Z
-X <- dat$X
-
-priorfits <- InvestigatePrior(y = y, Z = Z, X = X, q.seq = c(2, 1/2, 1/4, 1/16))
-PlotPriorFits(y = y, Z = Z, X = X, fits = priorfits)
-}

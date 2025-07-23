@@ -21,7 +21,8 @@
 #' Z <- ex_data$Z
 #' modifier <- ex_data$X$Sex
 #' X_full <- ex_data$X[,-2] #remove Sex from the covariate matrix because it is the modifier
-#' X <- model.matrix(~., data=X_full)[,-1] #create design matrix to account for factor variables, remove the intercept column
+#' #create design matrix to account for factor variables, remove the intercept column
+#' X <- model.matrix(~., data=X_full)[,-1] 
 #' 
 #' ## Fit model 
 #' ## Using only 10 iterations to make example run quickly
@@ -33,7 +34,8 @@
 #' Znew <- matrix(med_vals, nrow = 1)
 #' mod_new <- "male"
 #' set.seed(111)
-#' samps3 <- SamplePred(fitkm, Znew = Znew, mod_new = mod_new, Xnew = matrix(rep(0,ncol(X)),ncol=ncol(X)))
+#' samps3 <- SamplePred(fitkm, Znew = Znew, mod_new = mod_new, 
+#' Xnew = matrix(rep(0,ncol(X)),ncol=ncol(X)))
 #' head(samps3)
 SamplePred <- function(fit, Znew = NULL, Xnew = NULL, mod_new = NULL, 
                        Z = NULL, X = NULL, modifier = NULL, y = NULL, 

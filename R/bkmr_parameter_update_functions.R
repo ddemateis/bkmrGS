@@ -271,9 +271,9 @@ h.update <- function(lambda, Vcomps, sigsq.eps, y, X, beta, r, Z, data.comps, mo
 		lamKVinv <- scalar_lambda*K%*%Vinv
 		h.postmean <- lamKVinv%*%(y-X%*%beta)
 		##h.postvar <- sigsq.eps*lamKVinv
-		if(gs.sig){
+		if(data.comps$gs.sig){
 		  sigs <- sigsq.eps
-		  names(sigs) <- lvls
+		  names(sigs) <- data.comps$levels
 		  sigsq.eps.h <- sigs[apply(modifier, 1, paste, collapse = "")]
 		}else{
 		  sigsq.eps.h <- rep(sigsq.eps, nrow(X)) #if single sigsq.eps, make vector of the same value

@@ -1,5 +1,6 @@
 ---
-title: "bkmrGSOverview"
+title: "Overview of Analysis with Group-Separable Bayesian Kernel Machine Regression with the bkmrGS package"
+author: "by Danielle Demateis"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{bkmrGSOverview}
@@ -10,7 +11,9 @@ vignette: >
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  fig.width = 6,
+  fig.height = 4
 )
 ```
 
@@ -18,7 +21,6 @@ knitr::opts_chunk$set(
 library(ggplot2)
 ```
 
-# Preamble
 
 # Installation
 
@@ -33,11 +35,11 @@ Then the package can be loaded by
 library(bkmrGS)
 ```
 
-If you are performing both BKMR analyses with and without effect modification, the following is important. First, use the `bkmr` package from CRAN for BKMR analyses without modification. While the `bkmrGS` package can fit both models, `bkmr` package will have the latest updates. Second, make sure to specify the package name when calling functions from each package. Many functions share the same name, so specifying which package to use is important. For example, use `bkmr::kmbayes()` to specify the `kmbayes` function from the `bkmr` package, and use `bkmrGS::kmbayes()` to specify the `kmbayes` function from the `bkmrGS` package. 
 
-# Methodology and Applications
+This vignette introduces the `bkmrGS` package to implement the group-separable BKMR model. The package is built on top of the BKMR paper by Jennifer Bobb available at https://CRAN.R-project.org/package=bkmr and described in https://doi.org/10.1093/biostatistics/kxu058 and https://doi.org/10.1186/s12940-018-0413-y. A manuscript on this work is currently under review.  
 
-Paper pending.
+Note that while this package is built off the `bkmr` package, it does not have all of the functionality of that package. For a standard BKMR analysis, please use the original `bkmr` package. If you are using both the `bkmr` and `bkmrGS` packages in the same R session, make sure to specify the package names when calling functions. 
+
 
 # Group-separable BKMR Model
 
@@ -171,8 +173,7 @@ ggplot(pred.resp.univar, aes(z, est, ymin = est - 1.96*se,
   xlab("Exposure level (log transformed, centered/scaled)") +
   ylab("Exposure-response function (h)") +
   theme_classic() +
-  theme(legend.position = "bottom",
-        text = element_text(size = 12))+
+  theme(legend.position = "bottom")+
   labs(color="Child sex", fill = "Child sex", linetype = "Child sex") +
   scale_fill_manual(values=c("#CDC1D1", "#C3DCD7"))+
   scale_color_manual(values=c("#421052", "#3BA68A"))
@@ -205,8 +206,7 @@ ggplot(single_exp_gs_df,
   facet_wrap(vars(variable))+
   theme_bw()+
   theme(legend.position = "bottom",
-        axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
-        text = element_text(size = 12))+
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))+
   xlab("Quantile")+
   ylab("Difference in BSID-III per \n IQR change in exposure") +
   labs(color="Child sex", fill = "Child sex", shape = "Child sex") +
@@ -237,8 +237,7 @@ ggplot(total_mix_gs_df,
   geom_pointrange(position = position_dodge(width = 0.05), size=0.5)+
   theme_bw()+
   theme(legend.position = "bottom",
-        axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
-        text = element_text(size = 12))+
+        axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))+
   xlab("Quantile")+
   ylab("Difference in BSID-III per \n IQR change in exposure") +
   labs(color="Child sex", fill = "Child sex", shape = "Child sex") +
@@ -255,8 +254,7 @@ ggplot(total_mix_btwn, aes(x=quantile, y = est, ymin = est - 1.96*sd,
   geom_hline(yintercept=0)+
   geom_pointrange(size=0.5)+
   theme_bw()+
-  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
-        text = element_text(size = 12))+
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))+
   xlab("Quantile")+
   ylab("Difference in association \n (per IQR change) with BSID-III \n between girls and boys")
 ```
@@ -269,8 +267,7 @@ ggplot(single_exp_btwn, aes(x="", y = est, ymin = est - 1.96*sd,
   geom_pointrange(size=0.5)+
   facet_wrap(vars(variable))+
   theme_bw()+
-  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
-        text = element_text(size = 12))+
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))+
   xlab("")+
   ylab("Difference in association \n (per IQR change) with BSID-III \n between girls and boys")
 ```
@@ -360,11 +357,16 @@ ggplot(pred.resp.univar, aes(z, est, ymin = est - 1.96*se,
   xlab("Exposure level (log transformed, centered/scaled)") +
   ylab("Exposure-response function (h)") +
   theme_classic() +
-  theme(legend.position = "bottom",
-        text = element_text(size = 12))+
+  theme(legend.position = "bottom")+
   labs(color="Child sex", fill = "Child sex", linetype = "Child sex") +
   scale_fill_manual(values=c("#CDC1D1", "#C3DCD7"))+
   scale_color_manual(values=c("#421052", "#3BA68A"))
 ```
 
 # Bibliography
+
+Bobb, J.F., Claus Henn, B., Valeri, L. et al. Statistical software for analyzing the health effects of multiple concurrent exposures via Bayesian kernel machine regression. Environ Health 17, 67 (2018). https://doi.org/10.1186/s12940-018-0413-y
+
+Bobb JF, Valeri L, Claus Henn B, Christiani DC, Wright RO, Mazumdar M, Godleski JJ, Coull BA. Bayesian kernel machine regression for estimating the health effects of multi-pollutant mixtures. Biostatistics. 2015 Jul;16(3):493-508. doi: 10.1093/biostatistics/kxu058. 
+
+Jeremiah Zhe Liu, Wenying Deng, Jane Lee, Pi-i Debby Lin, Linda Valeri, David C. Christiani, David C. Bellinger, Robert O. Wright, Maitreyi M. Mazumdar, and Brent A. Coull. A Cross-Validated Ensemble Approach to Robust Hypothesis Testing of Continuous Nonlinear Interactions: Application to Nutrition-Environment Studies. Journal of the American Statistical Association, 117(538):561–573, April 2022. ISSN 0162-1459, 1537-274X. doi: 10.1080/01621459.2021.1962889. 

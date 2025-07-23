@@ -16,7 +16,6 @@ PredictorResponseBivarPair(
   method = "approx",
   prob = 0.5,
   q.fixed = 0.5,
-  mod.fixed = NULL,
   sel = NULL,
   ngrid = 50,
   min.plot.dist = 0.5,
@@ -62,22 +61,4 @@ a data frame with value of the first predictor, the value of the second predicto
 }
 \description{
 Plot bivariate predictor-response function on a new grid of points
-}
-\examples{
-## First generate dataset
-set.seed(111)
-dat <- SimData(n = 50, M = 4)
-y <- dat$y
-Z <- dat$Z
-X <- dat$X
-
-## Fit model with component-wise variable selection
-## Using only 100 iterations to make example run quickly
-## Typically should use a large number of iterations for inference
-set.seed(111)
-fitkm <- kmbayes(y = y, Z = Z, X = X, iter = 100, verbose = FALSE, varsel = TRUE)
-
-## Obtain predicted value on new grid of points
-## Using only a 10-by-10 point grid to make example run quickly
-pred.resp.bivar12 <- PredictorResponseBivarPair(fit = fitkm, min.plot.dist = 1, ngrid = 10)
 }

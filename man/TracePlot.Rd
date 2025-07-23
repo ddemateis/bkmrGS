@@ -42,20 +42,22 @@ Trace plot
 For guided examples, see vignette(bkmrGSOverview)
 }
 \examples{
-## First generate dataset
-set.seed(111)
-dat <- SimData(n = 50, M = 4)
-y <- dat$y
-Z <- dat$Z
-X <- dat$X
+## First generate data set
+y <- ex_data$y
+Z <- ex_data$Z
+modifier <- ex_data$X$Sex
+X_full <- ex_data$X[,-2] #remove Sex from the covariate matrix because it is the modifier
+#create design matrix to account for factor variables, remove the intercept column
+X <- model.matrix(~., data=X_full)[,-1] 
 
-## Fit model with component-wise variable selection
-## Using only 100 iterations to make example run quickly
+## Fit model 
+## Using only 10 iterations to make example run quickly
 ## Typically should use a large number of iterations for inference
 set.seed(111)
-fitkm <- kmbayes(y = y, Z = Z, X = X, iter = 100, verbose = FALSE, varsel = TRUE)
+fitkm <- kmbayes(y = y, Z = Z, modifier = modifier, X = X, iter = 10, verbose = FALSE) 
 
 TracePlot(fit = fitkm, par = "beta")
+TracePlot(fit = fitkm, par = "lambda")
 TracePlot(fit = fitkm, par = "sigsq.eps")
 TracePlot(fit = fitkm, par = "r", comp = 1)
 }

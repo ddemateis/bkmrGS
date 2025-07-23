@@ -32,23 +32,3 @@ Function to plot the \code{h} function of a particular variable at different lev
 \details{
 For guided examples, see vignette(bkmrGSOverview)
 }
-\examples{
-## First generate dataset
-set.seed(111)
-dat <- SimData(n = 50, M = 4)
-y <- dat$y
-Z <- dat$Z
-X <- dat$X
-
-## Fit model with component-wise variable selection
-## Using only 100 iterations to make example run quickly
-## Typically should use a large number of iterations for inference
-set.seed(111)
-fitkm <- kmbayes(y = y, Z = Z, X = X, iter = 100, verbose = FALSE, varsel = TRUE)
-
-## Obtain predicted value on new grid of points for each pair of predictors
-## Using only a 10-by-10 point grid to make example run quickly
-pred.resp.bivar <- PredictorResponseBivar(fit = fitkm, min.plot.dist = 1, ngrid = 10)
-pred.resp.bivar.levels <- PredictorResponseBivarLevels(pred.resp.df = pred.resp.bivar, 
-Z = Z, qs = c(0.1, 0.5, 0.9))
-}
