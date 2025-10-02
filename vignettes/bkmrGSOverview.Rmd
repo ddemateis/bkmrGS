@@ -38,7 +38,7 @@ library(bkmrGS)
 
 This vignette introduces the `bkmrGS` package to implement the group-separable BKMR model. The package is built on top of the BKMR paper by Jennifer Bobb available at https://CRAN.R-project.org/package=bkmr and described in https://doi.org/10.1093/biostatistics/kxu058 and https://doi.org/10.1186/s12940-018-0413-y. A manuscript on this work is currently under review.  
 
-Note that while this package is built off the `bkmr` package, it does not have all of the functionality of that package. For a standard BKMR analysis, please use the original `bkmr` package. If you are using both the `bkmr` and `bkmrGS` packages in the same R session, make sure to specify the package names when calling functions. 
+Note that while this package is built off the `bkmr` package, it does not have all of the functionality of that package. For a standard BKMR analysis, please use the original `bkmr` package. If you are using both the `bkmr` and `bkmrGS` packages in the same R session, make sure to specify the package names when calling functions. For example, you can call `bkmr::kmbayes` or `bkmrGS::kmbayes` to differentiate between the functions in the two packages.
 
 
 # Group-separable BKMR Model
