@@ -4,7 +4,7 @@
 \alias{SimData2}
 \title{Simulate dataset with modifier}
 \usage{
-SimData2(scenario = "none", SNR = 10, mod_DGM = TRUE)
+SimData2(scenario = "none", SNR = 10, mod_DGM = TRUE, covariates = "new")
 }
 \arguments{
 \item{scenario}{Simulation scenario option: "none" for no modification between two groups, "oneGroup" for one group effect out of two groups, "scaled2" for one groups having a scaled effect of the other group with 2 exposures, "scaled3" is the same but for 3 exposures, and "multi" for one group with no effect and the other two groups having a scaled effect}
@@ -12,6 +12,8 @@ SimData2(scenario = "none", SNR = 10, mod_DGM = TRUE)
 \item{SNR}{signal-to-noise ratio}
 
 \item{mod_DGM}{indicator for including modifier in data generating mechanism}
+
+\item{covariates}{"old" for the 10 used in the first submission, "new" for the 14 used in the analysis and new submission}
 }
 \description{
 Simulate predictor, covariate, and continuous outcome data

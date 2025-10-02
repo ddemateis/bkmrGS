@@ -31,9 +31,11 @@ HFun <- function (z, opt = 1){
 #' @param scenario Simulation scenario option: "none" for no modification between two groups, "oneGroup" for one group effect out of two groups, "scaled2" for one groups having a scaled effect of the other group with 2 exposures, "scaled3" is the same but for 3 exposures, and "multi" for one group with no effect and the other two groups having a scaled effect
 #' @param SNR signal-to-noise ratio
 #' @param mod_DGM indicator for including modifier in data generating mechanism
+#' @param covariates "old" for the 10 used in the first submission, "new" for the 14 used in the analysis and new submission
 SimData2 <- function (scenario = "none",
                       SNR = 10,
-                      mod_DGM = TRUE){
+                      mod_DGM = TRUE,
+                      covariates = "new"){
   
   #ex_data is lazy loaded
   dta <- cbind(ex_data$Z, ex_data$X)
@@ -50,38 +52,55 @@ SimData2 <- function (scenario = "none",
   Z <- cbind(scale(dta$`Log Lead`), scale(dta$`Log Manganese`))
   
   #set covariates
-  if(scenario != "multi"){
-    X_full <- data.frame(dta$Age,
-                         dta$Gestation,
-                         dta$Delivery,
-                         dta$Birth_order,
-                         dta$Education_parent1,
-                         dta$Education_parent2,
-                         dta$Smoking,
-                         dta$HOME_emotional,
-                         dta$HOME_avoid,
-                         dta$HOME_careg,
-                         dta$HOME_env,
-                         dta$HOME_play,
-                         dta$HOME_stim,
-                         dta$Energy) 
-  }else{
-    X_full <- data.frame(dta$Age,
-                         dta$Sex,
-                         dta$Gestation,
-                         dta$Delivery,
-                         dta$Birth_order,
-                         dta$Education_parent1,
-                         dta$Education_parent2,
-                         dta$Smoking,
-                         dta$HOME_emotional,
-                         dta$HOME_avoid,
-                         dta$HOME_careg,
-                         dta$HOME_env,
-                         dta$HOME_stim,
-                         dta$Energy)
+  if(covariates == "old"){ #covariates from original submission
+    #data_standardized needs to be loaded externally from the package
+    #this is only here to check an issue, remove after found
+    load("data_standardized.rda")
+    data_standardized <- data_standardized[-c(50),]
+    X <- cbind(scale(data_standardized$X1),
+               scale(data_standardized$X3),
+               scale(data_standardized$X4),
+               scale(data_standardized$X5),
+               scale(data_standardized$X6),
+               scale(data_standardized$X7),
+               scale(data_standardized$X8),
+               scale(data_standardized$X9),
+               scale(data_standardized$X10),
+               scale(data_standardized$X11))
+  }else if(covariates == "new"){ #covariates from analysis and new submission
+    if(scenario != "multi"){
+      X_full <- data.frame(dta$Age,
+                           dta$Gestation,
+                           dta$Delivery,
+                           dta$Birth_order,
+                           dta$Education_parent1,
+                           dta$Education_parent2,
+                           dta$Smoking,
+                           dta$HOME_emotional,
+                           dta$HOME_avoid,
+                           dta$HOME_careg,
+                           dta$HOME_env,
+                           dta$HOME_play,
+                           dta$HOME_stim,
+                           dta$Energy) 
+    }else{
+      X_full <- data.frame(dta$Age,
+                           dta$Sex,
+                           dta$Gestation,
+                           dta$Delivery,
+                           dta$Birth_order,
+                           dta$Education_parent1,
+                           dta$Education_parent2,
+                           dta$Smoking,
+                           #dta$HOME_emotional, #dropping home covariates due to inversion issue in MCMC
+                           #dta$HOME_avoid,
+                           #dta$HOME_careg,
+                           #dta$HOME_env,
+                           #dta$HOME_stim,
+                           dta$Energy)
+    }
+    X <- model.matrix(~., data=X_full)[,-1]
   }
-  X <- model.matrix(~., data=X_full)[,-1]
   
   #randomly generate covariate coefficients
   beta.true <- rnorm(ncol(X))
